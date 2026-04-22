@@ -20,8 +20,7 @@ echo "=== Smoke test: $HOST ==="
 
 check "1. SSH reachable"                ssh -o BatchMode=yes -o ConnectTimeout=5 "$HOST" true
 check "2. Tailscale exit-node advertised" \
-  bash -c "ssh $HOST 'tailscale status --json | grep -q \"\\\"ExitNode\\\": true\"' \
-           || ssh $HOST 'tailscale status | grep -q \"offers exit\"'"
+  ssh "$HOST" 'tailscale status --json | grep -q "\"ExitNodeOption\": true"'
 check "3. nixos-rebuild dry-build OK"  \
   ssh "$HOST" 'cd ~/nix-config && sudo nixos-rebuild dry-build --flake .#home-server'
 check "4. agenix: hello-secret mounted" \
