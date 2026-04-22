@@ -3,7 +3,8 @@
   # === Boot / kernel ===
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  # kernelPackages lo define el módulo zfs-root (pin al último compatible con ZFS).
+  # Los hosts sin ZFS pueden setearlo explícitamente en su host module.
   # ARC cap 2 GB (justificación: RAM total 8 GB, cap para servicios).
   boot.kernelParams = [ "zfs.zfs_arc_max=2147483648" ];
 
