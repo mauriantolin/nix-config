@@ -31,7 +31,7 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-parts, home-manager, disko, agenix, ... }:
+  outputs = inputs@{ self, nixpkgs, flake-parts, home-manager, disko, agenix, nixos-anywhere, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" ];
 
