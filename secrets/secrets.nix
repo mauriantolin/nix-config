@@ -4,7 +4,7 @@ let
   mauricio = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM0/mKSFJ9hlyypK0uf3n55WDh/TCVWP8Rbbv9HAQl/q mauriantolin5@gmail.com";
 
   # Host pubkey — la ed25519 del home-server nuevo. Generada en Task 2.3.
-  homeServer = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ7HwxfX8KYCvadJHqDy+GrBdAE/GiUXyFNK0CKs2qK5 root@home-server-nixos";
+  homeServer = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINUKK/LQTrCtgAfZcE054PqcgwKO+w8uMTZXpRkQEYrO root@home-server-nixos";
 
   users = [ mauricio ];
   systems = [ homeServer ];
