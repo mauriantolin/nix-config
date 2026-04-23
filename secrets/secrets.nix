@@ -13,4 +13,8 @@ in
   "tailscale-authkey.age".publicKeys = users ++ systems;
   "mauri-hashed-password.age".publicKeys = users ++ systems;
   "hello-secret.age".publicKeys = users ++ systems;
+
+  # Fase B — ingress público via Cloudflare Tunnel
+  "cloudflared-credentials.age".publicKeys = users ++ systems;
+  "cloudflare-api-token.age".publicKeys = users ++ systems;
 }
