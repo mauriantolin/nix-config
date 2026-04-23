@@ -30,9 +30,13 @@ rollback:
 	sudo nix-env --profile /nix/var/nix/profiles/system --rollback
 	sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
 
-# Smoke test post-install (corre desde Atos PC)
+# Smoke test Fase A (corre desde Atos PC)
 smoke:
 	bash bin/smoke-test.sh
+
+# Smoke test Fase B — ingress público via Cloudflare Tunnel
+smoke-b:
+	bash bin/smoke-test-b.sh
 
 # Lista generaciones de NixOS
 generations:
