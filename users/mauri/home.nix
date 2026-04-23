@@ -15,6 +15,7 @@
     tree
     unzip
     dig
+    just
   ];
 
   programs.git = {
