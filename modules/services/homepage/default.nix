@@ -77,5 +77,11 @@ in
       "d /var/lib/homepage/config 0755 1000 1000 -"
       "d /var/lib/homepage/icons  0755 1000 1000 -"
     ];
+
+    # El bridge de podman (podman0, 10.88.0.0/16) necesita ser "trusted" en el
+    # firewall para que containers puedan alcanzar servicios del host. Sin esto,
+    # paquetes entrando por podman0 con destino a :3001 (Kuma) son dropeados.
+    # Scope: sólo containers en ese bridge, no tráfico externo.
+    networking.firewall.trustedInterfaces = [ "podman0" ];
   };
 }
