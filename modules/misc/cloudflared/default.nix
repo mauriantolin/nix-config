@@ -44,8 +44,11 @@ in
 
     age.secrets.cloudflaredCredentials = {
       file = "${secretsRoot}/cloudflared-credentials.age";
-      owner = "cloudflared";
-      group = "cloudflared";
+      # nixpkgs services.cloudflared usa DynamicUser=true desde 25.11 — el usuario
+      # estático `cloudflared` ya no existe. systemd lee el secret como root via
+      # `LoadCredential=` y se lo expone al DynamicUser bajo /run/credentials/.
+      owner = "root";
+      group = "root";
       mode = "0400";
     };
 
