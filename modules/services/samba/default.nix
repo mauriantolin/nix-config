@@ -1,0 +1,95 @@
+{ config, lib, pkgs, inputs, ... }:
+let
+  cfg = config.services.samba-homelab;
+  secretsRoot = "${inputs.secrets}/secrets";
+in
+{
+  options.services.samba-homelab = {
+    enable = lib.mkEnableOption "Samba share homelab (single user `mauri`, LAN+Tailnet, SMB3)";
+    user = lib.mkOption {
+      type = lib.types.str;
+      default = "mauri";
+      description = "Unix user (must already exist) that owns the share + is the Samba user.";
+    };
+    sharePath = lib.mkOption {
+      type = lib.types.path;
+      default = "/srv/storage/shares";
+      description = "Directorio raíz del share — respaldado por tank/storage/shares.";
+    };
+    lanInterface = lib.mkOption {
+      type = lib.types.str;
+      default = "enp2s0";
+      description = "Nombre real de la interfaz LAN (verificado con `ip -br link`).";
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    age.secrets.smbMauriPassword = {
+      file  = "${secretsRoot}/smb-mauri-password.age";
+      # Leído por systemd-samba-user-setup como root al arranque.
+      owner = "root";
+      group = "root";
+      mode  = "0400";
+    };
+
+    services.samba = {
+      enable = true;
+      openFirewall = false;   # firewall lo manejamos nosotros per-iface
+      securityType = "user";
+      extraConfig = ''
+        workgroup            = WORKGROUP
+        server string        = home-server
+        server role          = standalone server
+        min protocol         = SMB3
+        map to guest         = Never
+        dns proxy            = no
+        log file             = /var/log/samba/log.%m
+        max log size         = 1000
+        logging              = file
+        interfaces           = lo ${cfg.lanInterface} tailscale0
+        bind interfaces only = yes
+      '';
+      shares.${cfg.user} = {
+        path              = cfg.sharePath;
+        comment           = "${cfg.user} personal share";
+        browseable        = "yes";
+        "read only"       = "no";
+        "guest ok"        = "no";
+        "create mask"     = "0644";
+        "directory mask"  = "0755";
+        "valid users"     = cfg.user;
+      };
+    };
+
+    # Ownership del share + logdir
+    systemd.tmpfiles.rules = [
+      "d ${cfg.sharePath} 0755 ${cfg.user} users -"
+      "d /var/log/samba   0755 root       root  -"
+    ];
+
+    # Crea o actualiza el usuario SMB usando el secret. Idempotente: si el user
+    # existe, corre -s (update password); si no, -a -s (create with password).
+    systemd.services.samba-user-setup = {
+      description = "Ensure SMB user `${cfg.user}` exists with password from agenix";
+      after    = [ "agenix.service" "local-fs.target" ];
+      wantedBy = [ "smb.service" ];
+      before   = [ "smb.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = ''
+        PASS=$(cat /run/agenix/smbMauriPassword)
+        if ${pkgs.samba}/bin/pdbedit -L 2>/dev/null | grep -q '^${cfg.user}:'; then
+          (echo "$PASS"; echo "$PASS") | ${pkgs.samba}/bin/smbpasswd -s ${cfg.user}
+        else
+          (echo "$PASS"; echo "$PASS") | ${pkgs.samba}/bin/smbpasswd -s -a ${cfg.user}
+        fi
+      '';
+    };
+
+    # Firewall: 445/tcp en LAN. `lo` y `tailscale0` ya están en trustedInterfaces (Fase A),
+    # no hace falta abrir puerto ahí.
+    networking.firewall.interfaces.${cfg.lanInterface}.allowedTCPPorts = [ 445 ];
+  };
+}
