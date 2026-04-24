@@ -20,4 +20,7 @@ in
 
   # Fase C.1 — admin token Vaultwarden (env-file format con ADMIN_TOKEN=...)
   "vaultwarden-admin-token.age".publicKeys = users ++ systems;
+
+  # Fase C.2 — Samba password usuario mauri
+  "smb-mauri-password.age".publicKeys = users ++ systems;
 }
