@@ -9,20 +9,17 @@ in
       type = lib.types.port;
       default = 3001;
     };
-    basePath = lib.mkOption {
-      type = lib.types.str;
-      default = "/uptime";
-      description = "Subpath donde Tailscale Serve lo enruta. Debe matchear el routing en tailscale-serve.";
-    };
   };
 
   config = lib.mkIf cfg.enable {
+    # Plan B (post brainstorm): Kuma corre en root, expuesto por Tailscale Serve en puerto
+    # dedicado :8443. El subpath `/uptime/` se descartó porque Kuma redirige a /dashboard
+    # absoluto bajo reverse proxy, rompiendo el routing.
     services.uptime-kuma = {
       enable = true;
       settings = {
         PORT = toString cfg.port;
         HOST = "127.0.0.1";
-        UPTIME_KUMA_BASE_URL = cfg.basePath;
       };
     };
 

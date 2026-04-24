@@ -5,7 +5,7 @@
         description: Password manager (Bitwarden fork)
     - Uptime Kuma:
         icon: uptime-kuma.png
-        href: /uptime/
+        href: https://home-server.tailee5654.ts.net:8443/
         description: Uptime monitoring
         widget:
           type: uptimekuma

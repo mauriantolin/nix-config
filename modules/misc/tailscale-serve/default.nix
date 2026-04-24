@@ -33,7 +33,7 @@ in
     # Apply the serve config imperatively (tailscale 1.90 has no --set-raw)
     # ------------------------------------------------------------------ #
     systemd.services.tailscale-serve-config = {
-      description = "Apply imperative tailscale serve config (/ → :3000, /uptime → :3001)";
+      description = "Apply imperative tailscale serve config (/ → :3000, :8443 → Kuma :3001)";
       after    = [ "tailscaled.service" "network-online.target" ];
       wants    = [ "tailscaled.service" "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
@@ -49,11 +49,12 @@ in
           # Reset any previous config to ensure idempotency.
           "$TS" serve reset || true
 
-          # / → Homepage on :3000
+          # :443 / → Homepage on :3000
           "$TS" serve --bg --https=443 http://127.0.0.1:3000
 
-          # /uptime → Uptime Kuma on :3001
-          "$TS" serve --bg --https=443 --set-path /uptime http://127.0.0.1:3001
+          # :8443 / → Uptime Kuma on :3001 (Plan B: Kuma's frontend redirige a /dashboard
+          # absoluto cuando corre bajo subpath, rompiendo /uptime/. Puerto dedicado lo evita.)
+          "$TS" serve --bg --https=8443 http://127.0.0.1:3001
         '';
       };
     };
