@@ -28,7 +28,7 @@
   services.vaultwarden-homelab = {
     enable = true;
     domain = "vault.mauricioantolin.com";
-    allowSignups = true;   # TEMPORAL: pasa a false tras crear el primer usuario
+    allowSignups = false;   # cerrado tras bootstrap
   };
 
   networking = {
