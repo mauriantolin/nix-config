@@ -46,7 +46,7 @@ check "4.3 ban/unban 203.0.113.99 round-trip con CF API"     ssh "$HOST" '
 
 # Phase 5 — Uptime Kuma (sólo checks locales; path via TS Serve se valida en Phase 7)
 check "5.1 uptime-kuma.service active"                       ssh "$HOST" "systemctl is-active uptime-kuma | grep -q active"
-check "5.2 puerto 127.0.0.1:3001 escuchando"                 ssh "$HOST" "sudo ss -tlnp | grep -q '127.0.0.1:3001'"
+check "5.2 puerto :3001 escuchando (0.0.0.0 o 127.0.0.1)"    ssh "$HOST" "sudo ss -tlnp | grep -qE '(127\\.0\\.0\\.1|0\\.0\\.0\\.0):3001'"
 check "5.3 kuma responde HTTP (2xx o 3xx)"                   ssh "$HOST" "curl -sS -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:3001/ | grep -qE '^(200|301|302|303|307|308)\$'"
 
 
