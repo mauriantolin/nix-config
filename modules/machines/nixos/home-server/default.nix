@@ -29,6 +29,21 @@
     nameservers = [ "1.1.1.1" "9.9.9.9" ];
   };
 
+  # Datasets creados en Fase C — Nix necesita saber de ellos para montarlos al boot.
+  # Nota: `mountpoint=legacy` en ZFS delega el mount a NixOS via fileSystems.
+  fileSystems."/var/lib/vaultwarden" = {
+    device = "rpool/services/vaultwarden";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/uptime-kuma" = {
+    device = "rpool/services/uptime-kuma";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/homepage" = {
+    device = "rpool/services/homepage";
+    fsType = "zfs";
+  };
+
   systemd.network = {
     enable = true;
     networks."10-lan" = {
