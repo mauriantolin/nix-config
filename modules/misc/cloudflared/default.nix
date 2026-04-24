@@ -48,5 +48,13 @@ in
       group = "cloudflared";
       mode = "0400";
     };
+
+    # QUIC (protocolo que usa cloudflared) necesita buffers UDP más grandes que
+    # el default Linux. Sin esto: "failed to sufficiently increase receive buffer size".
+    # Ref: https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
+    boot.kernel.sysctl = {
+      "net.core.rmem_max" = 7340032;
+      "net.core.wmem_max" = 7340032;
+    };
   };
 }
