@@ -17,4 +17,7 @@ in
   # Fase B — ingress público via Cloudflare Tunnel
   "cloudflared-credentials.age".publicKeys = users ++ systems;
   "cloudflare-api-token.age".publicKeys = users ++ systems;
+
+  # Fase C.1 — admin token Vaultwarden (env-file format con ADMIN_TOKEN=...)
+  "vaultwarden-admin-token.age".publicKeys = users ++ systems;
 }
