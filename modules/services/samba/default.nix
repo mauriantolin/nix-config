@@ -47,12 +47,13 @@ in
           "log file"             = "/var/log/samba/log.%m";
           "max log size"         = "1000";
           "logging"              = "file";
-          # `tailscale0` es point-to-point sin broadcast — Samba rechaza interfaces
-          # non-broadcast ("not adding non-broadcast interface"). Workaround: listar
-          # el rango CGNAT de Tailscale como IP/netmask en lugar del nombre de iface.
-          # 100.64.0.0/10 cubre todo el espacio Tailscale (RFC 6598).
-          "interfaces"           = "lo ${cfg.lanInterface} 100.64.0.0/10";
-          "bind interfaces only" = "yes";
+          # NO usamos `bind interfaces only` porque Samba rechaza interfaces
+          # non-broadcast (tailscale0 es point-to-point /32) — log dice
+          # "not adding non-broadcast interface". En su lugar: smbd escucha
+          # en 0.0.0.0:445 y el firewall NixOS restringe :445 a enp2s0 + tailscale0.
+          # Control de acceso a nivel Samba vía `hosts allow`.
+          "hosts allow"          = "127. 192.168.0. 100.64.0.0/10";
+          "hosts deny"           = "0.0.0.0/0";
         };
         ${cfg.user} = {
           "path"             = cfg.sharePath;
