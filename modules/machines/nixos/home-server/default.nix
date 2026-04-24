@@ -6,6 +6,7 @@
     ../../../misc/tailscale
     ../../../misc/agenix
     ../../../misc/cloudflared
+    ../../../misc/fail2ban-cloudflare
     ../../../services/whoami
     ../../../services/vaultwarden
     ../../../../users/mauri
@@ -29,6 +30,13 @@
     enable = true;
     domain = "vault.mauricioantolin.com";
     allowSignups = false;   # cerrado tras bootstrap
+  };
+
+  services.fail2ban-cloudflare-homelab = {
+    enable = true;
+    cfZone = "mauricioantolin.com";
+    blockMode = "block";
+    enableVaultwardenJail = true;
   };
 
   networking = {
