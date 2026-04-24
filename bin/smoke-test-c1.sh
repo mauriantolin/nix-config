@@ -55,6 +55,12 @@ check "6.1 podman-homepage.service active"                   ssh "$HOST" "system
 check "6.2 puerto 127.0.0.1:3000 escuchando"                 ssh "$HOST" "sudo ss -tlnp | grep -q '127.0.0.1:3000'"
 check "6.3 homepage responde HTTP 200"                       ssh "$HOST" "curl -sS -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:3000/ | grep -q '^200\$'"
 
+
+# Phase 7 — Tailscale Serve
+check "7.1 tailscale-serve-config.service active"            ssh "$HOST" "systemctl is-active tailscale-serve-config | grep -q active"
+check "7.2 tailnet HTTPS / (Homepage)"                       ssh "$HOST" "curl -fsS -o /dev/null https://$TAILNET_HOST/"
+check "7.3 tailnet HTTPS /uptime/ (Kuma)"                    ssh "$HOST" "curl -fsS -o /dev/null https://$TAILNET_HOST/uptime/"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "✓ Fase C.1 verde"
