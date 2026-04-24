@@ -10,6 +10,7 @@
     ../../../services/whoami
     ../../../services/vaultwarden
     ../../../services/uptime-kuma
+    ../../../services/homepage
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -41,6 +42,8 @@
   };
 
   services.uptime-kuma-homelab.enable = true;
+
+  services.homepage-homelab.enable = true;
 
   networking = {
     hostName = "home-server";

@@ -1,0 +1,13 @@
+- Infra:
+    - Vaultwarden:
+        icon: bitwarden.png
+        href: https://vault.mauricioantolin.com
+        description: Password manager (Bitwarden fork)
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: /uptime/
+        description: Uptime monitoring
+        widget:
+          type: uptimekuma
+          url: http://127.0.0.1:3001
+          slug: homelab

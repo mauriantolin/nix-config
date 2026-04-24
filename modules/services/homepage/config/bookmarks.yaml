@@ -1,0 +1,10 @@
+- Homelab:
+    - Nix Config:
+        - abbr: NC
+          href: https://github.com/mauriantolin/nix-config
+    - Cloudflare:
+        - abbr: CF
+          href: https://dash.cloudflare.com
+    - Tailscale:
+        - abbr: TS
+          href: https://login.tailscale.com/admin

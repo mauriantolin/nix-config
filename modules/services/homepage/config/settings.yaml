@@ -1,0 +1,9 @@
+title: home-server
+theme: dark
+color: slate
+layout:
+  Infra:
+    style: row
+    columns: 2
+headerStyle: clean
+hideVersion: true
