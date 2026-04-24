@@ -34,7 +34,6 @@ in
         SIGNUPS_VERIFY       = false;
         INVITATIONS_ALLOWED  = true;
         SHOW_PASSWORD_HINT   = false;
-        LOG_FILE             = "/var/log/vaultwarden/vaultwarden.log";
         LOG_LEVEL            = "warn";
         EXTENDED_LOGGING     = true;
         IP_HEADER            = "CF-Connecting-IP";
@@ -48,10 +47,6 @@ in
       group = "vaultwarden";
       mode  = "0400";
     };
-
-    systemd.tmpfiles.rules = [
-      "d /var/log/vaultwarden 0750 vaultwarden vaultwarden -"
-    ];
 
     # /var/lib/vaultwarden ya tiene su dataset ZFS montado (Phase 2). Aseguramos
     # ownership correcto al boot por si NixOS lo dejó como root.
