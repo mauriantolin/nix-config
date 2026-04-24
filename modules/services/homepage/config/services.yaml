@@ -9,5 +9,7 @@
         description: Uptime monitoring
         widget:
           type: uptimekuma
-          url: http://127.0.0.1:3001
+          # Desde el container de Homepage, `127.0.0.1` es el container mismo. Para alcanzar
+          # Kuma que corre en el host, usamos el bridge podman via host.containers.internal.
+          url: http://host.containers.internal:3001
           slug: homelab

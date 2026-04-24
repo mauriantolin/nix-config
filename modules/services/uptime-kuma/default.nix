@@ -19,7 +19,12 @@ in
       enable = true;
       settings = {
         PORT = toString cfg.port;
-        HOST = "127.0.0.1";
+        # 0.0.0.0 permite que el bridge de podman (10.88.0.1) alcance Kuma desde
+        # el container de Homepage vía `host.containers.internal:3001`.
+        # Exposición: :3001 queda en tailscale0 también, pero tailnet es trusted y
+        # Tailscale Serve ya expone lo mismo en :8443 — redundante, no nuevo vector.
+        # LAN (enp2s0): firewall no abre :3001, sigue bloqueado.
+        HOST = "0.0.0.0";
       };
     };
 
