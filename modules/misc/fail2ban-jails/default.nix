@@ -61,22 +61,47 @@ let
   '';
 
   # === Nftables-local action (NUEVO en D.1) ===
-  # Crea/destruye la table inet fail2ban-homelab y un set con timeout.
-  # priority -10 para que el drop sea ANTES del firewall principal de NixOS (priority 0).
+  # Wrap nft invocations in a shell script (same pattern as cloudflareActionScript)
+  # because fail2ban's multi-line actionstart parser munges the quoting of `;`
+  # inside the nft set/chain definitions, causing syntax errors in nft.
   # ipv4-only banlist; samba's IPv6 inbound is firewall-dropped on the LAN iface
   # (see modules/services/samba/default.nix), so a v6 ban path is not exercised.
   # Extend to a second set type ipv6_addr if a future jail needs v6.
+  # priority -10 so the drop runs BEFORE the NixOS firewall main chain (priority 0).
+  nftLocalActionScript = pkgs.writeShellScript "nft-local-action.sh" ''
+    set -euo pipefail
+    NFT="${pkgs.nftables}/bin/nft"
+    ACTION="$1"
+    case "$ACTION" in
+      start)
+        "$NFT" delete table inet fail2ban-homelab 2>/dev/null || true
+        "$NFT" add table inet fail2ban-homelab
+        "$NFT" 'add set inet fail2ban-homelab banlist { type ipv4_addr ; flags interval, timeout ; }'
+        "$NFT" 'add chain inet fail2ban-homelab input { type filter hook input priority -10 ; }'
+        "$NFT" 'add rule inet fail2ban-homelab input ip saddr @banlist drop'
+        ;;
+      stop)
+        "$NFT" delete table inet fail2ban-homelab 2>/dev/null || true
+        ;;
+      ban)
+        IP="$2"; BANTIME="$3"
+        "$NFT" "add element inet fail2ban-homelab banlist { $IP timeout ''${BANTIME}s }"
+        ;;
+      unban)
+        IP="$2"
+        "$NFT" "delete element inet fail2ban-homelab banlist { $IP }" 2>/dev/null || true
+        ;;
+      *) echo "unknown action: $ACTION" >&2; exit 1 ;;
+    esac
+  '';
+
   nftActionConf = ''
     [Definition]
-    actionstart = ${pkgs.nftables}/bin/nft delete table inet fail2ban-homelab 2>/dev/null || true
-                  ${pkgs.nftables}/bin/nft add table inet fail2ban-homelab
-                  ${pkgs.nftables}/bin/nft 'add set inet fail2ban-homelab banlist { type ipv4_addr ; flags interval, timeout ; }'
-                  ${pkgs.nftables}/bin/nft 'add chain inet fail2ban-homelab input { type filter hook input priority -10 ; }'
-                  ${pkgs.nftables}/bin/nft 'add rule inet fail2ban-homelab input ip saddr @banlist drop'
-    actionstop  = ${pkgs.nftables}/bin/nft delete table inet fail2ban-homelab
+    actionstart = ${nftLocalActionScript} start
+    actionstop  = ${nftLocalActionScript} stop
     actioncheck =
-    actionban   = ${pkgs.nftables}/bin/nft 'add element inet fail2ban-homelab banlist { <ip> timeout <bantime>s }'
-    actionunban = ${pkgs.nftables}/bin/nft 'delete element inet fail2ban-homelab banlist { <ip> }' || true
+    actionban   = ${nftLocalActionScript} ban <ip> <bantime>
+    actionunban = ${nftLocalActionScript} unban <ip>
   '';
 
   # === Per-jail filter file generator ===
