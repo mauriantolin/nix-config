@@ -20,11 +20,13 @@ echo "=== Smoke test Fase D.1 ==="
 
 # === Phase 1: refactor + samba jail (host-side) ===
 
-check "1 fail2ban-jails-homelab option exposed"               ssh "$HOST" "
-  sudo nixos-option services.fail2ban-jails-homelab.enable 2>/dev/null | grep -q 'true'"
+check "1 fail2ban-jails module wired (both action.d files emitted)" ssh "$HOST" "
+  sudo test -f /etc/fail2ban/action.d/cf-edge.conf && \
+  sudo test -f /etc/fail2ban/action.d/nft-local.conf"
 
-check "2 nftables table inet fail2ban-homelab present"         ssh "$HOST" "
-  sudo nft list table inet fail2ban-homelab 2>/dev/null | grep -q 'set banlist'"
+check "2 nftables table inet fail2ban-homelab present"         ssh "$HOST" '
+  NFT=$(readlink -f $(find /nix/store -maxdepth 3 -name nft -type f -executable 2>/dev/null | head -1))
+  sudo "$NFT" list table inet fail2ban-homelab 2>/dev/null | grep -q "set banlist"'
 
 check "3 VW jail still active (regression)"                    ssh "$HOST" "
   sudo fail2ban-client status vaultwarden 2>/dev/null | grep -q 'Currently failed'"
@@ -45,8 +47,9 @@ check "7 Samba ignoreip includes Tailnet"                       ssh "$HOST" "
   sudo cat /etc/fail2ban/jail.d/samba.local 2>/dev/null | grep -q '100.64.0.0/10' || \
   sudo fail2ban-client get samba ignoreip 2>/dev/null | grep -q '100.64.0.0/10'"
 
-check "8 nft chain has priority -10"                            ssh "$HOST" "
-  sudo nft list chain inet fail2ban-homelab input | grep -q 'priority -10\\|priority filter - 10'"
+check "8 nft chain has priority -10"                            ssh "$HOST" '
+  NFT=$(readlink -f $(find /nix/store -maxdepth 3 -name nft -type f -executable 2>/dev/null | head -1))
+  sudo "$NFT" list chain inet fail2ban-homelab input | grep -qE "priority -10|priority filter - 10"'
 
 # === Phase 4: CF Access + geo-block (CF dashboard) ===
 # These checks fail until CF dashboard is configured (Tasks 11-12).
