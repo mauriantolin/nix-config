@@ -4,13 +4,19 @@ let
 
   # Itera handlers y emite una línea `tailscale serve` por cada uno.
   # Cada handler: Port (default 443) + Path (default /) + Proxy (URL backend).
-  # Múltiples paths sobre el mismo port son OK con tailscale serve >=1.78.
+  # tailscale 1.90 sintaxis:
+  #   - Path = "/" → omitir flag → `tailscale serve --bg --https=PORT http://...`
+  #   - Path != "/" → `tailscale serve --bg --https=PORT --set-path=PATH http://...`
+  # Múltiples handlers en el mismo Port son OK siempre que sus Path no se solapen.
   handlerLines = lib.concatMapStringsSep "\n"
     (name:
-      let h = cfg.handlers.${name}; in
+      let
+        h = cfg.handlers.${name};
+        pathFlag = if h.Path == "/" then "" else "--set-path=${h.Path}";
+      in
       ''
         # ${name}
-        "$TS" serve --bg --https=${toString h.Port} ${h.Path} ${h.Proxy}
+        "$TS" serve --bg --https=${toString h.Port} ${pathFlag} ${h.Proxy}
       ''
     )
     (lib.attrNames cfg.handlers);
