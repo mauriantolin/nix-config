@@ -58,6 +58,10 @@ smoke-d1:
 smoke-e1:
 	bash bin/smoke-test-e1.sh
 
+# Smoke test Fase E.3 — prometheus + grafana + exporters
+smoke-e3:
+	bash bin/smoke-test-e3.sh
+
 # Shortcut diagnóstico fail2ban
 fail2ban-status:
 	ssh mauri@home-server 'sudo fail2ban-client status'
