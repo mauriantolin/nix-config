@@ -46,16 +46,32 @@ in
         }
       '';
     };
+
+    beforeMounts = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = ''
+        Lista de unidades systemd mount que dependen de estos datasets.
+        El servicio bootstrap corre `before` y `wantedBy` cada una.
+        Hardcodeado en lugar de `local-fs.target` para evitar ordering cycle
+        (zfs-import.target → bootstrap → local-fs.target → sysinit → zfs-import).
+        Convención: `<path-with-dashes>.mount` (e.g., `/var/lib/X` → `var-lib-X.mount`).
+      '';
+      example = lib.literalExpression ''
+        [ "var-lib-postgresql.mount" "var-lib-paperless.mount" "srv-docs.mount" ]
+      '';
+    };
   };
 
   config = lib.mkIf (cfg.enable && cfg.datasets != { }) {
     systemd.services.zfs-services-bootstrap = {
       description = "Auto-create missing ZFS datasets for homelab services";
-      # Tiene que correr DESPUÉS de imports + ANTES de cualquier intento de mount.
+      # Corre DESPUÉS de imports + ANTES de los mount units específicos.
+      # NO usar local-fs.target acá: causa ordering cycle con sysinit.target.
       after = [ "zfs-import.target" ];
       requires = [ "zfs-import.target" ];
-      before = [ "local-fs.target" "zfs-mount.service" ];
-      wantedBy = [ "local-fs.target" ];
+      before = cfg.beforeMounts;
+      wantedBy = cfg.beforeMounts;
 
       serviceConfig = {
         Type = "oneshot";

@@ -34,6 +34,12 @@
       "rpool/services/radicale"        = { };
       "tank/docs"                      = { recordsize = "1M"; };
     };
+    beforeMounts = [
+      "var-lib-postgresql.mount"
+      "var-lib-paperless.mount"
+      "var-lib-radicale.mount"
+      "srv-docs.mount"
+    ];
   };
 
   # Fase B — Cloudflare Tunnel activo. Credenciales en agenix cloudflared-credentials.age.
