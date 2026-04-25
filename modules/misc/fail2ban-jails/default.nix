@@ -80,9 +80,15 @@ let
   '';
 
   # === Per-jail filter file generator ===
+  # Continuation lines of multi-line failregex must start with whitespace so
+  # fail2ban's INI parser keeps them as part of the failregex value (otherwise
+  # only the first line is loaded — silent regression).
+  indentContinuations = s:
+    lib.replaceStrings [ "\n" ] [ "\n            " ] (lib.removeSuffix "\n" s);
+
   mkFilterFile = name: jail: ''
     [Definition]
-    failregex = ${jail.failregex}
+    failregex = ${indentContinuations jail.failregex}
     ignoreregex =
   '';
 
