@@ -13,6 +13,10 @@
     ../../../services/uptime-kuma
     ../../../services/homepage
     ../../../services/samba
+    # E.1 — apps stack (postgres compartido + gestión documental + CalDAV/CardDAV)
+    ../../../services/postgres-shared
+    ../../../services/paperless
+    ../../../services/radicale
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -25,6 +29,9 @@
     ingress = {
       "whoami.mauricioantolin.com" = "http://127.0.0.1:8080";
       "vault.mauricioantolin.com" = "http://127.0.0.1:8222";
+      # E.1
+      "paperless.mauricioantolin.com" = "http://127.0.0.1:8000";
+      "cal.mauricioantolin.com" = "http://127.0.0.1:5232";
     };
   };
 
@@ -85,6 +92,64 @@
     lanInterface = "enp2s0";
   };
 
+  # E.1 — share extra para drag-and-drop de PDFs al consume dir de Paperless.
+  # El módulo samba-homelab solo declara la share `${user}` por defecto; sumamos
+  # esta share via merge directo a services.samba.settings (NixOS attrset merge).
+  # forceUser=paperless: archivos drop terminan owned by paperless aunque mauri sea
+  # quien los escribe (necesario para que paperless-consumer pueda procesarlos).
+  services.samba.settings.paperless-consume = {
+    "path" = "/srv/docs/consume";
+    "comment" = "Paperless consume drop zone";
+    "browseable" = "yes";
+    "read only" = "no";
+    "guest ok" = "no";
+    "valid users" = "mauri";
+    "force user" = "paperless";
+    "force group" = "paperless";
+    "create mask" = "0664";
+    "directory mask" = "2775";
+  };
+
+  # ── E.1 services ────────────────────────────────────────────────────────────
+
+  services.postgres-shared-homelab = {
+    enable = true;
+    databases = {
+      paperless = {
+        user = "paperless";
+        secretFile = config.age.secrets.postgresPaperlessPass.path;
+      };
+      grafana = {
+        user = "grafana";
+        secretFile = config.age.secrets.postgresGrafanaPass.path;
+      };
+      nextcloud = {
+        user = "nextcloud";
+        secretFile = config.age.secrets.postgresNextcloudPass.path;
+      };
+      immich = {
+        user = "immich";
+        secretFile = config.age.secrets.postgresImmichPass.path;
+      };
+      hass = {
+        user = "hass";
+        secretFile = config.age.secrets.postgresHassPass.path;
+      };
+    };
+  };
+
+  # Postgres user passwords — agenix decryption only (no service-level owner;
+  # postgres-set-passwords corre como user `postgres` y lee via LoadCredential).
+  age.secrets.postgresPaperlessPass.file = "${inputs.secrets}/secrets/postgres-paperless-pass.age";
+  age.secrets.postgresGrafanaPass.file   = "${inputs.secrets}/secrets/postgres-grafana-pass.age";
+  age.secrets.postgresNextcloudPass.file = "${inputs.secrets}/secrets/postgres-nextcloud-pass.age";
+  age.secrets.postgresImmichPass.file    = "${inputs.secrets}/secrets/postgres-immich-pass.age";
+  age.secrets.postgresHassPass.file      = "${inputs.secrets}/secrets/postgres-hass-pass.age";
+
+  services.paperless-homelab.enable = true;
+
+  services.radicale-homelab.enable = true;
+
   networking = {
     hostName = "home-server";
     hostId = "3834b250";
@@ -93,7 +158,7 @@
     nameservers = [ "1.1.1.1" "9.9.9.9" ];
   };
 
-  # Datasets creados en Fase C — Nix necesita saber de ellos para montarlos al boot.
+  # Datasets creados en Fase C/E — Nix necesita saber de ellos para montarlos al boot.
   # Nota: `mountpoint=legacy` en ZFS delega el mount a NixOS via fileSystems.
   fileSystems."/var/lib/vaultwarden" = {
     device = "rpool/services/vaultwarden";
@@ -107,6 +172,25 @@
     device = "rpool/services/homepage";
     fsType = "zfs";
   };
+  # E.1 — apps stack
+  fileSystems."/var/lib/postgresql" = {
+    device = "rpool/services/postgres-shared";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/paperless" = {
+    device = "rpool/services/paperless";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/radicale" = {
+    device = "rpool/services/radicale";
+    fsType = "zfs";
+  };
+  fileSystems."/srv/docs" = {
+    device = "tank/docs";
+    fsType = "zfs";
+  };
+  # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared
+  # escribe a /srv/backups/postgresql (subdir creado via tmpfiles).
 
   systemd.network = {
     enable = true;
