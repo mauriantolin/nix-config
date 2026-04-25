@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test Fase C.1 — Vaultwarden + Uptime Kuma + Homepage + TS Serve + fail2ban-cloudflare
+# Smoke test Fase C.1 — Vaultwarden + Uptime Kuma + Homepage + TS Serve + fail2ban-jails (VW)
 # Se agregan checks a medida que cada sub-task cierra. Al llegar a Task 8.1 debe tener 9.
 set -euo pipefail
 
@@ -30,9 +30,9 @@ check "3.4 admin token montado owner vaultwarden"            ssh "$HOST" "sudo t
 check "3.5 signups cerrados (/api/accounts/register 4xx)"    bash -c 'CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "https://vault.'"$ZONE"'/api/accounts/register" -H "Content-Type: application/json" -d "{}"); [ "$CODE" -ge 400 ]'
 
 
-# Phase 4 — fail2ban-cloudflare
+# Phase 4 — fail2ban-jails (VW jail with cloudflare backend)
 check "4.1 fail2ban jail vaultwarden activo"                 ssh "$HOST" "sudo fail2ban-client status vaultwarden >/dev/null"
-check "4.2 action cloudflare-homelab declarada"              ssh "$HOST" "sudo test -f /etc/fail2ban/action.d/cloudflare-homelab.conf"
+check "4.2 action cf-edge declarada"                         ssh "$HOST" "sudo test -f /etc/fail2ban/action.d/cf-edge.conf"
 check "4.3 ban/unban 203.0.113.99 round-trip con CF API"     ssh "$HOST" '
   sudo fail2ban-client set vaultwarden banip 203.0.113.99 >/dev/null 2>&1
   sleep 3
