@@ -27,7 +27,7 @@ check "3.1 vaultwarden.service active"                       ssh "$HOST" "system
 check "3.2 puerto 127.0.0.1:8222 escuchando"                 ssh "$HOST" "sudo ss -tlnp | grep -q '127.0.0.1:8222'"
 check "3.3 /alive responde via CF tunnel"                    curl -fsS "https://vault.$ZONE/alive"
 check "3.4 admin token montado owner vaultwarden"            ssh "$HOST" "sudo test -s /run/agenix/vaultwardenAdminToken"
-check "3.5 signups cerrados (/api/accounts/register 4xx)"    bash -c 'CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "https://vault.'"$ZONE"'/api/accounts/register" -H "Content-Type: application/json" -d "{}"); [ "$CODE" -ge 400 ]'
+check "3.5 signups bloqueados (Access 302 o VW 4xx, no 200)" bash -c 'CODE=$(curl -sS -o /dev/null -w "%{http_code}" -L --max-redirs 0 -X POST "https://vault.'"$ZONE"'/api/accounts/register" -H "Content-Type: application/json" -d "{}"); [ "$CODE" = "302" ] || [ "$CODE" -ge 400 ]'
 
 
 # Phase 4 — fail2ban-jails (VW jail with cloudflare backend)
