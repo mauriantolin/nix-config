@@ -6,7 +6,7 @@
     ../../../misc/tailscale
     ../../../misc/agenix
     ../../../misc/cloudflared
-    ../../../misc/fail2ban-cloudflare
+    ../../../misc/fail2ban-jails
     ../../../misc/tailscale-serve
     ../../../services/whoami
     ../../../services/vaultwarden
@@ -24,7 +24,7 @@
     tunnelId = "f97802ac-24f1-4810-8042-3d207292eb78";
     ingress = {
       "whoami.mauricioantolin.com" = "http://127.0.0.1:8080";
-      "vault.mauricioantolin.com"  = "http://127.0.0.1:8222";
+      "vault.mauricioantolin.com" = "http://127.0.0.1:8222";
     };
   };
 
@@ -33,14 +33,24 @@
   services.vaultwarden-homelab = {
     enable = true;
     domain = "vault.mauricioantolin.com";
-    allowSignups = false;   # cerrado tras bootstrap
+    allowSignups = false; # cerrado tras bootstrap
   };
 
-  services.fail2ban-cloudflare-homelab = {
+  services.fail2ban-jails-homelab = {
     enable = true;
     cfZone = "mauricioantolin.com";
     blockMode = "block";
-    enableVaultwardenJail = true;
+    jails.vaultwarden = {
+      service = "vaultwarden";
+      backend = "cloudflare";
+      failregex = ''
+        ^.*Username or password is incorrect\. Try again\. IP: <HOST>\. Username:.*$
+        ^.*Invalid admin token\. IP: <HOST>\.$
+      '';
+      maxRetry = 5;
+      findTime = "10m";
+      banTime = "4h";
+    };
   };
 
   services.uptime-kuma-homelab.enable = true;
@@ -51,7 +61,7 @@
     enable = true;
     magicHostname = "home-server.tailee5654.ts.net";
     handlers = {
-      "/"        = { Proxy = "http://127.0.0.1:3000"; };
+      "/" = { Proxy = "http://127.0.0.1:3000"; };
       "/uptime/" = { Proxy = "http://127.0.0.1:3001"; };
     };
   };
