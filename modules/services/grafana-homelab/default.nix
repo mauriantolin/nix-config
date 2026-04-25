@@ -25,10 +25,13 @@ in
 
     rootUrl = lib.mkOption {
       type = lib.types.str;
-      default = "https://home-server.tailee5654.ts.net/grafana/";
+      default = "https://home-server.tailee5654.ts.net:3443/";
       description = ''
-        Root URL pública (con subpath). Tailscale Serve hace el reverse proxy
-        en /grafana/. Si subpath rompe plugins → fallback a subhost dedicado.
+        Root URL pública. Tailscale Serve mapea https://...:3443 → :3030 loopback.
+        Bug original (2026-04-25): subpath /grafana/ + serve_from_sub_path=true
+        producía redirect loop 301 a sí mismo (Grafana detecta proto inconsistente
+        detrás del TLS terminator). Plan B (puerto dedicado, root path) lo evita
+        — mismo patrón que Kuma en :8443.
       '';
     };
 
@@ -72,7 +75,9 @@ in
           http_port = cfg.port;
           domain = cfg.domain;
           root_url = cfg.rootUrl;
-          serve_from_sub_path = true;
+          # serve_from_sub_path REMOVIDO — usamos puerto dedicado (Plan B del spec).
+          # Subpath + Tailscale Serve TLS-termination → redirect loop 301.
+          serve_from_sub_path = false;
           enforce_domain = false;
         };
 
