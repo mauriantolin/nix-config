@@ -8,6 +8,7 @@
     ../../../misc/cloudflared
     ../../../misc/fail2ban-jails
     ../../../misc/tailscale-serve
+    ../../../misc/zfs-services-bootstrap
     ../../../services/whoami
     ../../../services/vaultwarden
     ../../../services/uptime-kuma
@@ -21,6 +22,19 @@
     ./hardware.nix
     ./disko.nix
   ];
+
+  # Auto-create datasets E.1 si faltan (defensa contra disaster recovery + dev re-deploy).
+  # Lección aprendida 2026-04-25: disko solo crea datasets en install fresco; para sumar
+  # datasets en host ya instalado, sin este módulo el deploy falla con emergency mode.
+  services.zfs-services-bootstrap = {
+    enable = true;
+    datasets = {
+      "rpool/services/postgres-shared" = { recordsize = "8K"; };
+      "rpool/services/paperless"       = { };
+      "rpool/services/radicale"        = { };
+      "tank/docs"                      = { recordsize = "1M"; };
+    };
+  };
 
   # Fase B — Cloudflare Tunnel activo. Credenciales en agenix cloudflared-credentials.age.
   services.cloudflared-homelab = {

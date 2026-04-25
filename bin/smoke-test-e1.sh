@@ -68,15 +68,23 @@ check "10 paperless.* via CF Tunnel responds (Access redirect)" bash -c '
 
 # === radicale ===
 
-check "11 radicale responds on 5232 (401 sin auth)" ssh "$HOST" '
-  CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5232/)
-  [ "$CODE" = "401" ] || [ "$CODE" = "200" ]'
+check "11 radicale responds on 5232 (302 redirect a /.web)" ssh "$HOST" '
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 http://127.0.0.1:5232/)
+  [ "$CODE" = "302" ] || [ "$CODE" = "401" ] || [ "$CODE" = "200" ]'
 
-check "12 cal.* via CF (BYPASS Access, radicale 401 directo)" bash -c '
+check "12 cal.* via CF (BYPASS Access, llega a radicale)" bash -c '
   # Q1 RESUELTO: CF Access tiene bypass policy para cal.* → llega directo a radicale.
-  # Si esta check da 302, probablemente falta el bypass policy en CF dashboard.
+  # Radicale GET / → 302 a /.web (UI). CalDAV usa basic auth en paths específicos.
+  # Si llega a Access OTP el código sería 302 a cloudflareaccess.com/cdn-cgi/access/login...
+  # Diferenciamos por el header Location.
+  RESP=$(curl -sI --max-time 10 --max-redirs 0 https://cal.mauricioantolin.com/ 2>/dev/null)
+  echo "$RESP" | grep -qiE "location: /\.web|location: http://127" && exit 0
+  # Fallback: si bypass no está, redirige a Access login
+  exit 1'
+
+check "12b cal.* CalDAV path requiere auth (401)" bash -c '
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-    https://cal.mauricioantolin.com/ 2>/dev/null)
+    https://cal.mauricioantolin.com/mauri/ 2>/dev/null)
   [ "$CODE" = "401" ]'
 
 # === datasets + samba share ===

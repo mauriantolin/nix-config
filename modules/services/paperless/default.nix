@@ -174,12 +174,21 @@ in
       unixSocketPerm = 600;
     };
 
-    # tank/docs subdirs. consumptionDirIsPublic=true ya setea consume dir como 0775,
-    # pero garantizamos los demás (originales, media) acá.
+    # tank/docs subdirs.
+    # IMPORTANTE: consumptionDirIsPublic=true del módulo nixpkgs crea consumeDir con 0777
+    # SOLO si está en /var/lib/paperless. Cuando consumeDir es path externo (tank), hay que
+    # declararlo explícito acá. Idem dataDir/{log,data,index}: cuando dataDir es dataset ZFS
+    # nuevo (vacío post-creación), el módulo paperless asume que existen y falla con
+    # PermissionError al loggear. Los pre-creamos.
     systemd.tmpfiles.rules = [
       "d /srv/docs              0755 paperless paperless -"
+      "d ${cfg.consumeDir}      2775 paperless paperless -"   # setgid + group writable (mauri)
       "d ${cfg.mediaDir}        0755 paperless paperless -"
       "d /srv/docs/originals    0755 paperless paperless -"
+      "d ${cfg.dataDir}         0755 paperless paperless -"
+      "d ${cfg.dataDir}/log     0755 paperless paperless -"
+      "d ${cfg.dataDir}/data    0755 paperless paperless -"
+      "d ${cfg.dataDir}/index   0755 paperless paperless -"
     ];
 
     # mauri necesita estar en grupo paperless para escribir al consume dir vía Samba.
