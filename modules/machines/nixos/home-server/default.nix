@@ -90,6 +90,23 @@
       findTime = "10m";
       banTime = "1h";
     };
+    # E.1 hardening — paperless está atrás de CF Tunnel + Access OTP, con lo que
+    # bruteforce vía CF requiere haber pasado OTP primero. Defense-in-depth: si
+    # alguien obtiene cookie Access pero falla login VW/paperless, lo banean.
+    # Solo matchea cuando paperless logea IP via X-Forwarded-For (CF→cloudflared→paperless).
+    # NO se incluye radicale: radicale no parsea CF-Connecting-IP, ve siempre 127.0.0.1
+    # detrás del tunnel; fail2ban quedaría inútil (banearía loopback).
+    jails.paperless = {
+      service = "paperless-web";
+      backend = "cloudflare";   # paperless es público vía CF; ban en CF edge
+      failregex = ''
+        ^.*\[paperless\.auth\] Login failed for user `[^`]+` from <HOST>\.\s*$
+      '';
+      ignoreIp = [ "127.0.0.1/8" "::1" "100.64.0.0/10" ];
+      maxRetry = 5;
+      findTime = "10m";
+      banTime = "1h";
+    };
   };
 
   services.uptime-kuma-homelab.enable = true;

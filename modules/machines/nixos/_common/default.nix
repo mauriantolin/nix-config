@@ -8,6 +8,16 @@
   # ARC cap 2 GB (justificación: RAM total 8 GB, cap para servicios).
   boot.kernelParams = [ "zfs.zfs_arc_max=2147483648" ];
 
+  # === Auto-recovery sysctls (lección post-incident E.1 2026-04-25) ===
+  # Auto-reboot 10s después de kernel panic. Cubre 90% de hangs no-hardware.
+  # Sin esto, una OOM masiva, deadlock, o oops puede dejar la máquina muerta
+  # hasta intervención física.
+  boot.kernel.sysctl = {
+    "kernel.panic" = 10;
+    "kernel.panic_on_oops" = 1;           # tratar oops kernel como panic
+    "kernel.hung_task_timeout_secs" = 30; # detectar tareas colgadas en 30s
+  };
+
   # === Nix settings ===
   nix = {
     settings = {
