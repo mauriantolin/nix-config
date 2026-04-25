@@ -76,6 +76,13 @@ in
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        # CRITICAL: sin esto el systemd-default `After=sysinit.target` crea un
+        # ordering cycle:
+        #   local-fs.target → mount → bootstrap → sysinit.target → local-fs.target
+        # systemd lo "rompe" eliminando un edge (warning + exit 4 en switch).
+        # Sumando 2 mounts más en E.3 hizo el cycle más largo y rompió grafana.
+        # Bootstrap solo depende de zfs-import.target → no necesita default deps.
+        DefaultDependencies = false;
       };
 
       script =

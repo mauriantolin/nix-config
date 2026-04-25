@@ -46,7 +46,7 @@
       "var-lib-radicale.mount"
       "srv-docs.mount"
       # E.3
-      "var-lib-prometheus.mount"
+      "var-lib-prometheus2.mount"
       "var-lib-grafana.mount"
     ];
   };
@@ -259,8 +259,9 @@
     device = "tank/docs";
     fsType = "zfs";
   };
-  # E.3 — observabilidad
-  fileSystems."/var/lib/prometheus" = {
+  # E.3 — observabilidad. NixOS prometheus default stateDir=prometheus2 →
+  # mountpoint /var/lib/prometheus2 (no /var/lib/prometheus).
+  fileSystems."/var/lib/prometheus2" = {
     device = "rpool/services/prometheus";
     fsType = "zfs";
   };

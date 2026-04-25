@@ -161,9 +161,11 @@
           };
           # E.3 — observabilidad. TSDB en SSD; recordsize default OK
           # (Prometheus escribe en chunks ~2h, no se beneficia de tuning).
+          # NixOS module usa stateDir=prometheus2 → mount al path NixOS-default
+          # /var/lib/prometheus2 (no /var/lib/prometheus, que quedaría sin uso).
           "services/prometheus" = {
             type = "zfs_fs";
-            mountpoint = "/var/lib/prometheus";
+            mountpoint = "/var/lib/prometheus2";
             options.mountpoint = "legacy";
           };
           "services/grafana" = {

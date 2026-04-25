@@ -153,21 +153,40 @@ in
       };
     };
 
-    # Grafana depende de postgres listo (DB grafana migrada al primer arranque).
+    # Grafana depende de postgres listo (DB grafana migrada al primer arranque)
+    # y del oneshot que chowna el mountpoint del dataset.
     systemd.services.grafana.after = [
       "postgresql.service"
       "postgres-set-passwords.service"
       "var-lib-grafana.mount"
+      "grafana-mount-prepare.service"
     ];
     systemd.services.grafana.requires = [
       "postgresql.service"
       "postgres-set-passwords.service"
       "var-lib-grafana.mount"
+      "grafana-mount-prepare.service"
     ];
 
-    # Asegurar dir base con ownership cuando el dataset es nuevo y vacío.
-    systemd.tmpfiles.rules = [
-      "d /var/lib/grafana 0750 grafana grafana -"
-    ];
+    # Chown post-mount: el dataset ZFS se monta con root:root 0755 (default mountpoint
+    # legacy). systemd-tmpfiles corre at sysinit ANTES del mount, con lo que su rule
+    # se aplica al dir subyacente y queda oculto. grafana-pre-start crea symlinks
+    # como user grafana → falla con "permission denied".
+    # Fix: oneshot que chmod+chown DESPUÉS del mount, antes de grafana.service.
+    systemd.services.grafana-mount-prepare = {
+      description = "Fix /var/lib/grafana ownership post-ZFS-mount";
+      after = [ "var-lib-grafana.mount" ];
+      requires = [ "var-lib-grafana.mount" ];
+      before = [ "grafana.service" ];
+      wantedBy = [ "grafana.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = ''
+        ${pkgs.coreutils}/bin/chown grafana:grafana /var/lib/grafana
+        ${pkgs.coreutils}/bin/chmod 0750 /var/lib/grafana
+      '';
+    };
   };
 }
