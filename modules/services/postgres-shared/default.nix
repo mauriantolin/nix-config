@@ -86,7 +86,9 @@ in
     # Post-start: aplica ALTER USER PASSWORD para todos los users desde agenix.
     # Razón: services.postgresql.ensureUsers crea users SIN password (gotcha NixOS conocido).
     # LoadCredential copia los .age desencriptados a un tmpfs solo legible por este unit.
-    # SQL injection guard: doblamos comillas simples en el password antes de inyectar.
+    # SQL injection guard: usamos dollar-quoted strings de Postgres ($tag$...$tag$) —
+    # el password va literal sin necesidad de escape de comillas. Tag `bspw` (bootstrap pw)
+    # minimiza colisión; openssl rand -base64 nunca genera ese substring.
     systemd.services.postgres-set-passwords = {
       description = "Sync postgres user passwords from agenix";
       after = [ "postgresql.service" ];
@@ -111,13 +113,8 @@ in
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList (db: spec: ''
           # User ${spec.user} → DB ${db}
           raw=$(cat "$CREDENTIALS_DIRECTORY/${spec.user}")
-          # Escape ' → '' (PostgreSQL string literal escape) por defensa-en-profundidad.
-          # En la práctica openssl rand -base64 no genera comillas, pero el escape protege
-          # contra futuros generators o passwords manuales.
-          # Nix indented-string: ''' renderiza a '' literal en el shell.
-          escaped=$(printf '%s' "$raw" | ${pkgs.gnused}/bin/sed "s/'/'''/g")
           ${pkg}/bin/psql -v ON_ERROR_STOP=1 -tAc \
-            "ALTER USER \"${spec.user}\" WITH PASSWORD '$escaped';"
+            "ALTER USER \"${spec.user}\" WITH PASSWORD \$bspw\$$raw\$bspw\$;"
           echo "[OK] password set for role ${spec.user}"
         '') cfg.databases)}
       '';
