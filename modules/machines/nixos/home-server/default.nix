@@ -126,12 +126,15 @@
     enable = true;
     magicHostname = "home-server.tailee5654.ts.net";
     handlers = {
-      "/" = { Proxy = "http://127.0.0.1:3000"; };
-      "/uptime/" = { Proxy = "http://127.0.0.1:3001"; };
-      # E.3 — Grafana en subpath. serve_from_sub_path=true + root_url cargan
-      # los assets desde /grafana/ correctamente. Si algún plugin asume root=/,
-      # fallback documentado: subhost dedicado (ver spec Q1).
-      "/grafana/" = { Proxy = "http://127.0.0.1:3030"; };
+      # Homepage en :443/ (default)
+      homepage = { Proxy = "http://127.0.0.1:3000"; };
+      # Uptime Kuma en puerto dedicado :8443 (su frontend rompe bajo subpath:
+      # redirige a /dashboard absoluto. Plan B documentado en spec C.1).
+      uptime = { Proxy = "http://127.0.0.1:3001"; Port = 8443; };
+      # E.3 — Grafana en :443/grafana/. serve_from_sub_path=true + root_url
+      # cargan assets desde /grafana/ OK. Si plugin asume root=/, fallback:
+      # mover a Port dedicado (ver spec Q1).
+      grafana = { Proxy = "http://127.0.0.1:3030"; Path = "/grafana/"; };
     };
   };
 
