@@ -23,6 +23,7 @@
     ../../../services/grafana-homelab
     # E.2 — media stack (Jellyfin primero; *arr/deluge/jellyseerr en sub-deploys)
     ../../../services/jellyfin-homelab
+    ../../../services/deluge-homelab
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -47,6 +48,9 @@
       "tank/storage/media/movies"      = { recordsize = "1M"; };
       "tank/storage/media/tv"          = { recordsize = "1M"; };
       "tank/storage/media/music"       = { recordsize = "1M"; };
+      # E.2b — Deluge
+      "rpool/services/deluge"          = { };
+      "tank/downloads"                 = { recordsize = "1M"; };
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
@@ -62,6 +66,9 @@
       "srv-storage-media-movies.mount"
       "srv-storage-media-tv.mount"
       "srv-storage-media-music.mount"
+      # E.2b
+      "var-lib-deluge.mount"
+      "srv-downloads.mount"
     ];
   };
 
@@ -154,6 +161,8 @@
       prometheus = { Proxy = "http://127.0.0.1:9090"; Port = 9443; };
       # E.2a — Jellyfin en su puerto nativo :8096 vía TS Serve
       jellyfin = { Proxy = "http://127.0.0.1:8096"; Port = 8096; };
+      # E.2b — Deluge web UI vía TS Serve
+      deluge = { Proxy = "http://127.0.0.1:8112"; Port = 8112; };
     };
   };
 
@@ -249,6 +258,13 @@
     # autoBootstrap=true por default → crea admin user + 3 libraries en first-boot.
   };
 
+  # ── E.2b — Deluge (Path A no-VPN) ───────────────────────────────────────────
+  services.deluge-homelab = {
+    enable = true;
+    # downloads dirs default OK (/srv/downloads/{incomplete,complete}).
+    # Path A behavior config (encryption forced + caps) en el módulo.
+  };
+
   networking = {
     hostName = "home-server";
     hostId = "3834b250";
@@ -317,6 +333,15 @@
   };
   fileSystems."/srv/storage/media/music" = {
     device = "tank/storage/media/music";
+    fsType = "zfs";
+  };
+  # E.2b — Deluge
+  fileSystems."/var/lib/deluge" = {
+    device = "rpool/services/deluge";
+    fsType = "zfs";
+  };
+  fileSystems."/srv/downloads" = {
+    device = "tank/downloads";
     fsType = "zfs";
   };
   # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared

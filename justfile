@@ -66,6 +66,10 @@ smoke-e3:
 smoke-e2a:
 	bash bin/smoke-test-e2a.sh
 
+# Smoke test Fase E.2b — Deluge (Path A no-VPN)
+smoke-e2b:
+	bash bin/smoke-test-e2b.sh
+
 # Shortcut diagnóstico fail2ban
 fail2ban-status:
 	ssh mauri@home-server 'sudo fail2ban-client status'
