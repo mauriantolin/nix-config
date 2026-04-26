@@ -201,6 +201,12 @@ in
         ${pkgs.coreutils}/bin/chown deluge:media /var/lib/deluge
         ${pkgs.coreutils}/bin/chmod 0750 /var/lib/deluge
 
+        # NixOS deluge pre-start hace `cp ... /var/lib/deluge/.config/deluge/core.conf`,
+        # asume el subdir existe. Lo creamos.
+        ${pkgs.coreutils}/bin/install -d -m 0750 -o deluge -g media \
+          /var/lib/deluge/.config \
+          /var/lib/deluge/.config/deluge
+
         # /srv/downloads: setgid 2775 para que *arr (group=media) pueda hardlink
         # desde complete/ a /srv/storage/media/...
         ${pkgs.coreutils}/bin/install -d -m 2775 -o deluge -g media \
