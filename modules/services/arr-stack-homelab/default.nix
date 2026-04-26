@@ -170,7 +170,9 @@ in
         LoadCredential = "deluge-pass:${config.age.secrets.delugeWebPass.path}";
       };
       script = ''
-        set -euo pipefail
+        # Best-effort: cada step API-side puede fallar (schema mismatch entre
+        # *arr versions) sin romper el resto. set -u para safety pero sin -e.
+        set -uo pipefail
 
         DELUGE_PASS=$(cat "$CREDENTIALS_DIRECTORY/deluge-pass")
 
