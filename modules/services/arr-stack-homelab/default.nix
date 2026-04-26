@@ -101,30 +101,30 @@ in
     # ── Storage prepare per-service ────────────────────────────────────────
     # Mismo patrón que jellyfin-storage-prepare: chown post-mount-ZFS antes
     # del start del servicio (tmpfiles at sysinit no sirve para datasets nuevos).
+    # NOTA: prowlarr usa DynamicUser=yes en NixOS 25.11 (StateDirectory=prowlarr),
+    # entonces NO pre-creamos /var/lib/prowlarr — systemd lo gestiona automáticamente
+    # via /var/lib/private/prowlarr + symlink. Mismo razón por la cual prowlarr no
+    # tiene dataset ZFS dedicado en disko.nix (queda en rpool/var, ~5 MB OK).
     systemd.services.arr-storage-prepare = {
-      description = "Fix *arr dataDirs ownership post-ZFS-mount";
+      description = "Fix *arr dataDirs ownership post-ZFS-mount (sonarr/radarr/bazarr)";
       after = [
         "var-lib-sonarr.mount"
         "var-lib-radarr.mount"
-        "var-lib-prowlarr.mount"
         "var-lib-bazarr.mount"
       ];
       requires = [
         "var-lib-sonarr.mount"
         "var-lib-radarr.mount"
-        "var-lib-prowlarr.mount"
         "var-lib-bazarr.mount"
       ];
       before = [
         "sonarr.service"
         "radarr.service"
-        "prowlarr.service"
         "bazarr.service"
       ];
       wantedBy = [
         "sonarr.service"
         "radarr.service"
-        "prowlarr.service"
         "bazarr.service"
       ];
       serviceConfig = {
@@ -132,14 +132,12 @@ in
         RemainAfterExit = true;
       };
       script = ''
-        ${pkgs.coreutils}/bin/chown sonarr:media   /var/lib/sonarr
-        ${pkgs.coreutils}/bin/chmod 0750           /var/lib/sonarr
-        ${pkgs.coreutils}/bin/chown radarr:media   /var/lib/radarr
-        ${pkgs.coreutils}/bin/chmod 0750           /var/lib/radarr
-        ${pkgs.coreutils}/bin/chown prowlarr:media /var/lib/prowlarr
-        ${pkgs.coreutils}/bin/chmod 0750           /var/lib/prowlarr
-        ${pkgs.coreutils}/bin/chown bazarr:media   /var/lib/bazarr
-        ${pkgs.coreutils}/bin/chmod 0750           /var/lib/bazarr
+        ${pkgs.coreutils}/bin/chown sonarr:media /var/lib/sonarr
+        ${pkgs.coreutils}/bin/chmod 0750         /var/lib/sonarr
+        ${pkgs.coreutils}/bin/chown radarr:media /var/lib/radarr
+        ${pkgs.coreutils}/bin/chmod 0750         /var/lib/radarr
+        ${pkgs.coreutils}/bin/chown bazarr:media /var/lib/bazarr
+        ${pkgs.coreutils}/bin/chmod 0750         /var/lib/bazarr
       '';
     };
 

@@ -56,22 +56,10 @@ in
       HOST = "127.0.0.1";
     };
 
-    # Storage prepare post-mount-ZFS.
-    systemd.services.jellyseerr-storage-prepare = {
-      description = "Fix /var/lib/jellyseerr ownership post-ZFS-mount";
-      after = [ "var-lib-jellyseerr.mount" ];
-      requires = [ "var-lib-jellyseerr.mount" ];
-      before = [ "jellyseerr.service" ];
-      wantedBy = [ "jellyseerr.service" ];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-      };
-      script = ''
-        ${pkgs.coreutils}/bin/chown jellyseerr:jellyseerr /var/lib/jellyseerr
-        ${pkgs.coreutils}/bin/chmod 0750                  /var/lib/jellyseerr
-      '';
-    };
+    # NOTA: jellyseerr en NixOS 25.11 usa DynamicUser=yes + StateDirectory=jellyseerr.
+    # systemd gestiona /var/lib/jellyseerr (symlink → /var/lib/private/jellyseerr) y
+    # se rehúsa si pre-existe como dir real (ej: dataset ZFS montado). Por eso NO
+    # tenemos dataset dedicado en disko.nix — vive en rpool/var (pocos KB).
 
     # ── Auto-bootstrap ───────────────────────────────────────────────────────
     # Jellyseerr API endpoints relevantes:
