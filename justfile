@@ -62,6 +62,10 @@ smoke-e1:
 smoke-e3:
 	bash bin/smoke-test-e3.sh
 
+# Smoke test Fase E.2a — Jellyfin + media datasets + QSV
+smoke-e2a:
+	bash bin/smoke-test-e2a.sh
+
 # Shortcut diagnóstico fail2ban
 fail2ban-status:
 	ssh mauri@home-server 'sudo fail2ban-client status'
