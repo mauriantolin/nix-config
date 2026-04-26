@@ -24,6 +24,7 @@
     # E.2 — media stack (Jellyfin primero; *arr/deluge/jellyseerr en sub-deploys)
     ../../../services/jellyfin-homelab
     ../../../services/deluge-homelab
+    ../../../services/arr-stack-homelab
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -51,6 +52,11 @@
       # E.2b — Deluge
       "rpool/services/deluge"          = { };
       "tank/downloads"                 = { recordsize = "1M"; };
+      # E.2c — *arr stack
+      "rpool/services/sonarr"          = { };
+      "rpool/services/radarr"          = { };
+      "rpool/services/prowlarr"        = { };
+      "rpool/services/bazarr"          = { };
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
@@ -69,6 +75,11 @@
       # E.2b
       "var-lib-deluge.mount"
       "srv-downloads.mount"
+      # E.2c
+      "var-lib-sonarr.mount"
+      "var-lib-radarr.mount"
+      "var-lib-prowlarr.mount"
+      "var-lib-bazarr.mount"
     ];
   };
 
@@ -163,6 +174,11 @@
       jellyfin = { Proxy = "http://127.0.0.1:8096"; Port = 8096; };
       # E.2b — Deluge web UI vía TS Serve
       deluge = { Proxy = "http://127.0.0.1:8112"; Port = 8112; };
+      # E.2c — *arr admin UIs (cada uno en su puerto nativo)
+      sonarr   = { Proxy = "http://127.0.0.1:8989"; Port = 8989; };
+      radarr   = { Proxy = "http://127.0.0.1:7878"; Port = 7878; };
+      prowlarr = { Proxy = "http://127.0.0.1:9696"; Port = 9696; };
+      bazarr   = { Proxy = "http://127.0.0.1:6767"; Port = 6767; };
     };
   };
 
@@ -265,6 +281,14 @@
     # Path A behavior config (encryption forced + caps) en el módulo.
   };
 
+  # ── E.2c — *arr stack (Prowlarr + Sonarr + Radarr + Bazarr) ─────────────────
+  services.arr-stack-homelab = {
+    enable = true;
+    # autoBootstrap=true por default → arr-bootstrap.service conecta
+    # Prowlarr↔Sonarr/Radarr, Sonarr/Radarr→Deluge, Bazarr↔Sonarr/Radarr.
+    # Idempotente (skip si la integración ya existe).
+  };
+
   networking = {
     hostName = "home-server";
     hostId = "3834b250";
@@ -342,6 +366,23 @@
   };
   fileSystems."/srv/downloads" = {
     device = "tank/downloads";
+    fsType = "zfs";
+  };
+  # E.2c — *arr stack
+  fileSystems."/var/lib/sonarr" = {
+    device = "rpool/services/sonarr";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/radarr" = {
+    device = "rpool/services/radarr";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/prowlarr" = {
+    device = "rpool/services/prowlarr";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/bazarr" = {
+    device = "rpool/services/bazarr";
     fsType = "zfs";
   };
   # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared

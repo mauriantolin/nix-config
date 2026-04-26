@@ -193,6 +193,27 @@
             mountpoint = "/var/lib/deluge";
             options.mountpoint = "legacy";
           };
+          # E.2c — *arr stack (SQLite DBs en SSD)
+          "services/sonarr" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/sonarr";
+            options.mountpoint = "legacy";
+          };
+          "services/radarr" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/radarr";
+            options.mountpoint = "legacy";
+          };
+          "services/prowlarr" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/prowlarr";
+            options.mountpoint = "legacy";
+          };
+          "services/bazarr" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/bazarr";
+            options.mountpoint = "legacy";
+          };
         };
       };
 

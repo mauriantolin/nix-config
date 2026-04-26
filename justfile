@@ -70,6 +70,10 @@ smoke-e2a:
 smoke-e2b:
 	bash bin/smoke-test-e2b.sh
 
+# Smoke test Fase E.2c — *arr stack (Prowlarr + Sonarr + Radarr + Bazarr)
+smoke-e2c:
+	bash bin/smoke-test-e2c.sh
+
 # Shortcut diagnóstico fail2ban
 fail2ban-status:
 	ssh mauri@home-server 'sudo fail2ban-client status'
