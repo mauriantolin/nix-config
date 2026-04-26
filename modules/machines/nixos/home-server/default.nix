@@ -274,7 +274,10 @@
   services.jellyfin-homelab = {
     enable = true;
     hwAccel = true;
-    # autoBootstrap=true por default → crea admin user + 3 libraries en first-boot.
+    # Jellyfin 10.11 cambió /Startup/Configuration body format (responde 415 con JSON
+    # tradicional). Bootstrap automatizado deshabilitado por brittleness — wizard
+    # manual desde UI toma ~30s con el pass de Vaultwarden.
+    autoBootstrap = false;
   };
 
   # ── E.2b — Deluge (Path A no-VPN) ───────────────────────────────────────────
@@ -295,8 +298,10 @@
   # ── E.2d — Jellyseerr (UI de requests) ──────────────────────────────────────
   services.jellyseerr-homelab = {
     enable = true;
-    # autoBootstrap=true → wizard automático: Jellyfin auth + Sonarr/Radarr
-    # connections leyendo API keys de config.xml.
+    # /api/v1/auth/jellyfin responde 404 en jellyseerr 2.7.x — endpoint cambió
+    # en versiones nuevas. Bootstrap manual desde UI (login con Jellyfin admin →
+    # Sonarr/Radarr settings con API keys que están en /var/lib/{sonarr,radarr}/config.xml).
+    autoBootstrap = false;
   };
 
   networking = {
