@@ -169,18 +169,24 @@ in
         install -d -m 0750 -o deluge -g media /run/deluge
         pass=$(cat ${config.age.secrets.delugeWebPass.path})
 
-        # ── /run/deluge/auth: deluged daemon RPC auth (cfg.authFile apunta acá)
+        # ── /run/deluge/auth: deluged daemon RPC auth (cfg.authFile apunta acá).
+        # NixOS deluge module COPIA este archivo a <dataDir>/.config/deluge/auth en
+        # pre-start, así que tiene que incluir ambas líneas:
+        #   - <user>:<pass>:10 → admin login (web UI / *arr usan esto)
+        #   - localclient:<pass>:10 → handshake auto de delugeweb a deluged
+        # Sin localclient delugeweb tira TypeError en get_localhost_auth().
         install -m 0400 -o deluge -g media /dev/null /run/deluge/auth
-        printf '%s:%s:10\n' "${cfg.webUser}" "$pass" > /run/deluge/auth
+        {
+          printf '%s:%s:10\n' "${cfg.webUser}" "$pass"
+          printf 'localclient:%s:10\n' "$pass"
+        } > /run/deluge/auth
         chown deluge:media /run/deluge/auth
         chmod 0400 /run/deluge/auth
 
-        # ── /var/lib/deluge/.config/deluge/auth: localclient handshake de delugeweb
+        # /var/lib/deluge/.config/deluge/auth lo escribe el deluge module copiando
+        # /run/deluge/auth, no necesitamos hacerlo nosotros. Solo aseguramos el dir.
         install -d -m 0750 -o deluge -g media \
           /var/lib/deluge/.config /var/lib/deluge/.config/deluge
-        install -m 0600 -o deluge -g media /dev/null \
-          /var/lib/deluge/.config/deluge/auth
-        printf 'localclient:%s:10\n' "$pass" > /var/lib/deluge/.config/deluge/auth
 
         # ── /var/lib/deluge/.config/deluge/web.conf: web UI password (sha1+salt).
         # Sin esto, web UI usa default "deluge" → *arr no se puede conectar.
