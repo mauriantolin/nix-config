@@ -88,9 +88,6 @@ in
       openFirewall = false;
     };
 
-    # Prowlarr no necesita media access pero por uniformidad lo metemos al grupo.
-    users.users.prowlarr.extraGroups = [ "media" ];
-
     # Loopback bind: NixOS *arr modules NO exponen --bind-addr; bindean 0.0.0.0
     # por default. Mitigation: firewall solo abre estos ports en tailscale0
     # (servicio = loopback + tailscale, no LAN).
