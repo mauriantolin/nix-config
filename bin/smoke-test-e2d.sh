@@ -25,9 +25,9 @@ check "1 jellyseerr state dir existe (DynamicUser, sin dataset)" ssh "$HOST" "
 check "2 jellyseerr active" ssh "$HOST" '
   sudo systemctl is-active jellyseerr | grep -q "^active$"'
 
-check "3 jellyseerr listening on 127.0.0.1:5055 only" ssh "$HOST" "
-  sudo ss -tnlp | grep -q '127.0.0.1:5055' && \
-  ! sudo ss -tnlp | grep -E ':5055' | grep -qv '127.0.0.1'"
+check "3 jellyseerr listening on :5055 (tailscale0 only via firewall)" ssh "$HOST" "
+  sudo ss -tnlp | grep -qE ':5055' && \
+  sudo iptables -L nixos-fw-tailscale0 -n 2>/dev/null | grep -qE 'dpt:5055'"
 
 check "4 jellyseerr /api/v1/status returns 200" ssh "$HOST" '
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:5055/api/v1/status)
