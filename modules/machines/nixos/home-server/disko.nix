@@ -214,6 +214,12 @@
             mountpoint = "/var/lib/bazarr";
             options.mountpoint = "legacy";
           };
+          # E.2d — Jellyseerr
+          "services/jellyseerr" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/jellyseerr";
+            options.mountpoint = "legacy";
+          };
         };
       };
 

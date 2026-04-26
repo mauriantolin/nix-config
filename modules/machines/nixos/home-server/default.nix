@@ -25,6 +25,7 @@
     ../../../services/jellyfin-homelab
     ../../../services/deluge-homelab
     ../../../services/arr-stack-homelab
+    ../../../services/jellyseerr-homelab
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -57,6 +58,8 @@
       "rpool/services/radarr"          = { };
       "rpool/services/prowlarr"        = { };
       "rpool/services/bazarr"          = { };
+      # E.2d — Jellyseerr
+      "rpool/services/jellyseerr"      = { };
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
@@ -80,6 +83,8 @@
       "var-lib-radarr.mount"
       "var-lib-prowlarr.mount"
       "var-lib-bazarr.mount"
+      # E.2d
+      "var-lib-jellyseerr.mount"
     ];
   };
 
@@ -93,6 +98,8 @@
       # E.1
       "paperless.mauricioantolin.com" = "http://127.0.0.1:8000";
       "cal.mauricioantolin.com" = "http://127.0.0.1:5232";
+      # E.2d — Jellyseerr UI pública (auth interna via Jellyfin)
+      "requests.mauricioantolin.com" = "http://127.0.0.1:5055";
     };
   };
 
@@ -289,6 +296,13 @@
     # Idempotente (skip si la integración ya existe).
   };
 
+  # ── E.2d — Jellyseerr (UI de requests) ──────────────────────────────────────
+  services.jellyseerr-homelab = {
+    enable = true;
+    # autoBootstrap=true → wizard automático: Jellyfin auth + Sonarr/Radarr
+    # connections leyendo API keys de config.xml.
+  };
+
   networking = {
     hostName = "home-server";
     hostId = "3834b250";
@@ -383,6 +397,11 @@
   };
   fileSystems."/var/lib/bazarr" = {
     device = "rpool/services/bazarr";
+    fsType = "zfs";
+  };
+  # E.2d — Jellyseerr
+  fileSystems."/var/lib/jellyseerr" = {
+    device = "rpool/services/jellyseerr";
     fsType = "zfs";
   };
   # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared
