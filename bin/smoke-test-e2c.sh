@@ -47,19 +47,19 @@ check "5 puertos abiertos en tailscale0 only (no LAN/wan)" ssh "$HOST" "
   done"
 
 check "6 sonarr API responde" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/sonarr/config.xml 2>/dev/null)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/sonarr/config.xml 2>/dev/null)
   [ -n "$KEY" ] || exit 1
   CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Api-Key: $KEY" http://127.0.0.1:8989/api/v3/system/status)
   [ "$CODE" = "200" ]'
 
 check "7 radarr API responde" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/radarr/config.xml 2>/dev/null)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/radarr/config.xml 2>/dev/null)
   [ -n "$KEY" ] || exit 1
   CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Api-Key: $KEY" http://127.0.0.1:7878/api/v3/system/status)
   [ "$CODE" = "200" ]'
 
 check "8 prowlarr API responde" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/prowlarr/config.xml 2>/dev/null)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/prowlarr/config.xml 2>/dev/null)
   [ -n "$KEY" ] || exit 1
   CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Api-Key: $KEY" http://127.0.0.1:9696/api/v1/system/status)
   [ "$CODE" = "200" ]'
@@ -72,27 +72,27 @@ check "10 arr-bootstrap.service ran clean" ssh "$HOST" "
   sudo systemctl is-active arr-bootstrap.service | grep -qE 'active'"
 
 check "11 Sonarr root folder /srv/storage/media/tv configurado" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/sonarr/config.xml)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/sonarr/config.xml)
   curl -sf -H "X-Api-Key: $KEY" http://127.0.0.1:8989/api/v3/rootfolder | \
     jq -e ".[] | select(.path==\"/srv/storage/media/tv\")" >/dev/null'
 
 check "12 Radarr root folder /srv/storage/media/movies configurado" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/radarr/config.xml)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/radarr/config.xml)
   curl -sf -H "X-Api-Key: $KEY" http://127.0.0.1:7878/api/v3/rootfolder | \
     jq -e ".[] | select(.path==\"/srv/storage/media/movies\")" >/dev/null'
 
 check "13 Sonarr download client Deluge configurado" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/sonarr/config.xml)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/sonarr/config.xml)
   curl -sf -H "X-Api-Key: $KEY" http://127.0.0.1:8989/api/v3/downloadclient | \
     jq -e ".[] | select(.name==\"Deluge\")" >/dev/null'
 
 check "14 Radarr download client Deluge configurado" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/radarr/config.xml)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/radarr/config.xml)
   curl -sf -H "X-Api-Key: $KEY" http://127.0.0.1:7878/api/v3/downloadclient | \
     jq -e ".[] | select(.name==\"Deluge\")" >/dev/null'
 
 check "15 Prowlarr ↔ Sonarr+Radarr applications configuradas" ssh "$HOST" '
-  KEY=$(sudo xmllint --xpath "string(//ApiKey)" /var/lib/prowlarr/config.xml)
+  KEY=$(sudo sed -n "s|.*<ApiKey>\([^<]*\)</ApiKey>.*|\1|p" /var/lib/prowlarr/config.xml)
   APPS=$(curl -sf -H "X-Api-Key: $KEY" http://127.0.0.1:9696/api/v1/applications)
   echo "$APPS" | jq -e ".[] | select(.name==\"Sonarr\")" >/dev/null && \
   echo "$APPS" | jq -e ".[] | select(.name==\"Radarr\")" >/dev/null'
