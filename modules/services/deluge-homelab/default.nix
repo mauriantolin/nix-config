@@ -185,6 +185,12 @@ in
         WEB_CONF=/var/lib/deluge/.config/deluge/web.conf
         MARKER=/var/lib/deluge/.config/deluge/.web-pwd-managed
         if [ ! -f "$MARKER" ]; then
+          # delugeweb persiste in-memory state al shutdown (incluyendo default password
+          # hash). Si está corriendo cuando renderizamos, su save-on-stop nos clobbea.
+          # SIGKILL evita el save (pierde session pero no estado persistente real).
+          /run/current-system/sw/bin/systemctl kill --signal=SIGKILL delugeweb 2>/dev/null || true
+          /run/current-system/sw/bin/systemctl stop delugeweb 2>/dev/null || true
+
           SALT=$(openssl rand -hex 32)
           PWD_SHA1=$(printf '%s%s' "$SALT" "$pass" | openssl sha1 | awk '{print $2}')
           install -m 0600 -o deluge -g media /dev/null "$WEB_CONF"
@@ -216,9 +222,8 @@ JSON
           chmod 0600 "$WEB_CONF"
           install -m 0600 -o deluge -g media /dev/null "$MARKER"
           echo "[deluge-auth-prepare] web.conf renderizado con password de agenix"
-          # Forzar restart de delugeweb si ya estaba running con default password.
-          # --no-block evita deadlock si delugeweb está pidiendo nuestro propio start.
-          /run/current-system/sw/bin/systemctl --no-block try-restart delugeweb || true
+          # delugeweb se levanta solo via wantedBy/Before ordering (lo matamos arriba).
+          /run/current-system/sw/bin/systemctl --no-block start delugeweb || true
         fi
       '';
     };
