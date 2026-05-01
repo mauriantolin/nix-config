@@ -59,7 +59,7 @@ check "6.3 homepage responde HTTP 200"                       ssh "$HOST" "curl -
 # Phase 7 — Tailscale Serve
 check "7.1 tailscale-serve-config.service active"            ssh "$HOST" "systemctl is-active tailscale-serve-config | grep -q active"
 check "7.2 tailnet HTTPS / (Homepage)"                       ssh "$HOST" "curl -fsS -o /dev/null https://$TAILNET_HOST/"
-check "7.3 tailnet HTTPS /uptime/ (Kuma)"                    ssh "$HOST" "curl -fsS -o /dev/null https://$TAILNET_HOST/uptime/"
+check "7.3 tailnet HTTPS:8443 (Kuma puerto dedicado)"         ssh "$HOST" "curl -fsS -o /dev/null https://$TAILNET_HOST:8443/"
 
 echo
 if [ "$FAIL" -eq 0 ]; then
