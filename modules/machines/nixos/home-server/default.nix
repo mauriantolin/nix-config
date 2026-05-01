@@ -7,6 +7,7 @@
     ../../../misc/agenix
     ../../../misc/cloudflared
     ../../../misc/fail2ban-cloudflare
+    ../../../misc/tailscale-serve
     ../../../services/whoami
     ../../../services/vaultwarden
     ../../../services/uptime-kuma
@@ -44,6 +45,15 @@
   services.uptime-kuma-homelab.enable = true;
 
   services.homepage-homelab.enable = true;
+
+  services.tailscale-serve-homelab = {
+    enable = true;
+    magicHostname = "home-server.tailee5654.ts.net";
+    handlers = {
+      "/"        = { Proxy = "http://127.0.0.1:3000"; };
+      "/uptime/" = { Proxy = "http://127.0.0.1:3001"; };
+    };
+  };
 
   networking = {
     hostName = "home-server";
