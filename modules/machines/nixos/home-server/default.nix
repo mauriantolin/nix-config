@@ -272,7 +272,10 @@
     mode = "0400";
   };
 
-  services.paperless-homelab.enable = true;
+  services.paperless-homelab = {
+    enable = true;
+    oidc.enable = true;   # SSO via Keycloak (D.4a)
+  };
 
   services.radicale-homelab.enable = true;
 

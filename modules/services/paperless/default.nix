@@ -45,6 +45,28 @@ in
       type = lib.types.str;
       default = "America/Argentina/Buenos_Aires";
     };
+
+    oidc = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Habilitar SSO via Keycloak (realm homelab, client `paperless`).
+          Mantiene login local activo (PAPERLESS_DISABLE_REGULAR_LOGIN=false)
+          hasta family onboarding — admin mauri sigue con user/pass local.
+          allauth provider_id=keycloak → callback URI:
+            https://<domain>/accounts/oidc/keycloak/login/callback/
+        '';
+      };
+      issuerWellKnown = lib.mkOption {
+        type = lib.types.str;
+        default = "https://auth.mauricioantolin.com/realms/homelab/.well-known/openid-configuration";
+      };
+      clientId = lib.mkOption {
+        type = lib.types.str;
+        default = "paperless";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -127,8 +149,18 @@ in
       mode  = "0400";
     };
 
+    # OIDC client secret (mismo .age que el bootstrap KC inyecta en el realm).
+    # Se materializa en el env file rendered en runtime para que el JSON
+    # PAPERLESS_SOCIALACCOUNT_PROVIDERS no quede world-readable en /nix/store.
+    age.secrets.oidcClientPaperless = lib.mkIf cfg.oidc.enable {
+      file  = "${secretsRoot}/oidc-client-paperless.age";
+      owner = "paperless";
+      group = "paperless";
+      mode  = "0400";
+    };
+
     systemd.services.paperless-db-env-prepare = {
-      description = "Render PAPERLESS_DBPASS env file from agenix";
+      description = "Render PAPERLESS_DBPASS + (opcional) OIDC env file from agenix";
       after = [ "agenix.service" ];
       wantedBy = [ "paperless-web.service" ];
       before = [
@@ -137,6 +169,7 @@ in
         "paperless-scheduler.service"
         "paperless-task-queue.service"
       ];
+      path = with pkgs; [ jq coreutils ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
@@ -146,9 +179,31 @@ in
         install -d -m 0750 -o paperless -g paperless /run/paperless-env
         pass=$(cat ${config.age.secrets.postgresPaperlessPass.path})
         secret=$(cat ${config.age.secrets.paperlessSecretKey.path})
+        ${lib.optionalString cfg.oidc.enable ''
+          oidc_secret=$(cat ${config.age.secrets.oidcClientPaperless.path})
+          # JSON shape esperado por allauth.socialaccount.providers.openid_connect.
+          # Bash-quoting: jq construye el JSON, single-line para el env file.
+          oidc_json=$(jq -nc \
+            --arg client_id   "${cfg.oidc.clientId}" \
+            --arg secret      "$oidc_secret" \
+            --arg server_url  "${cfg.oidc.issuerWellKnown}" \
+            '{
+              openid_connect: {
+                APPS: [{
+                  provider_id: "keycloak",
+                  name: "Keycloak",
+                  client_id: $client_id,
+                  secret: $secret,
+                  settings: { server_url: $server_url }
+                }],
+                OAUTH_PKCE_ENABLED: true
+              }
+            }')
+        ''}
         cat > /run/paperless-env/db.env <<EOF
         PAPERLESS_DBPASS=$pass
         PAPERLESS_SECRET_KEY=$secret
+        ${lib.optionalString cfg.oidc.enable "PAPERLESS_SOCIALACCOUNT_PROVIDERS=$oidc_json"}
         EOF
         chown paperless:paperless /run/paperless-env/db.env
         chmod 0400 /run/paperless-env/db.env
