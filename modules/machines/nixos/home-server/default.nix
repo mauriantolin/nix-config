@@ -12,6 +12,7 @@
     ../../../services/vaultwarden
     ../../../services/uptime-kuma
     ../../../services/homepage
+    ../../../services/samba
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -53,6 +54,13 @@
       "/"        = { Proxy = "http://127.0.0.1:3000"; };
       "/uptime/" = { Proxy = "http://127.0.0.1:3001"; };
     };
+  };
+
+  services.samba-homelab = {
+    enable = true;
+    user = "mauri";
+    sharePath = "/srv/storage/shares";
+    lanInterface = "enp2s0";
   };
 
   networking = {
