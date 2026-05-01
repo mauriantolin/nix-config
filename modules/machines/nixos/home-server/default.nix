@@ -7,6 +7,7 @@
     ../../../misc/agenix
     ../../../misc/cloudflared
     ../../../services/whoami
+    ../../../services/vaultwarden
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -18,7 +19,16 @@
     tunnelId = "f97802ac-24f1-4810-8042-3d207292eb78";
     ingress = {
       "whoami.mauricioantolin.com" = "http://127.0.0.1:8080";
+      "vault.mauricioantolin.com"  = "http://127.0.0.1:8222";
     };
+  };
+
+  # Vaultwarden público vía CF Tunnel. Bootstrap con signups=true por una iteración,
+  # después flip a false (Task 3.7).
+  services.vaultwarden-homelab = {
+    enable = true;
+    domain = "vault.mauricioantolin.com";
+    allowSignups = true;   # TEMPORAL: pasa a false tras crear el primer usuario
   };
 
   networking = {
