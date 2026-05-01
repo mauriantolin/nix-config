@@ -116,11 +116,22 @@ check "18 13 OIDC clients presentes en realm 'homelab'" ssh "$HOST" "
 
 # === ingress público ===
 
-check "19 auth.mauricioantolin.com vía CF Tunnel responde" bash -c '
-  CODE=$(curl -s -o /dev/null -w "%{http_code}" -L --max-redirs 0 \
+check "19a auth.mauricioantolin.com — CF Tunnel routea a keycloak" bash -c '
+  # Solo verifica que el tunnel atienda y responda. 200 (sin Access) o 302
+  # con Location de cloudflareaccess.com (Access activo) ambos prueban
+  # que el tunnel + DNS estan OK; lo que diferencia es la policy.
+  RESP=$(curl -sI --max-time 15 \
     https://auth.mauricioantolin.com/realms/homelab/.well-known/openid-configuration 2>/dev/null)
-  # Esperado 200 (Keycloak es ingress público sin CF Access).
-  [ "$CODE" = "200" ]'
+  echo "$RESP" | grep -qiE "^HTTP/.* (200|302) " && \
+    echo "$RESP" | grep -qi "^server: cloudflare"'
+
+check "19b CF Access bypass policy presente para auth.* (200 directo, sin redirect a /cdn-cgi/access/login)" bash -c '
+  # Si CF Access intercepta, devuelve 302 a mauricioantolin.cloudflareaccess.com.
+  # Esperado: 200 directo del openid-configuration de Keycloak.
+  # FAILS hasta que se configure la bypass policy en CF Zero Trust.
+  CODE=$(curl -s -o /tmp/d3-resp -w "%{http_code}" --max-time 15 \
+    https://auth.mauricioantolin.com/realms/homelab/.well-known/openid-configuration 2>/dev/null)
+  [ "$CODE" = "200" ] && grep -q "auth.mauricioantolin.com" /tmp/d3-resp'
 
 check "20 issuer URL canónico = https://auth.* (sin port :8180, sin http://)" ssh "$HOST" "
   # KC 26 hostname-strict no rechaza por Host header — solo fuerza el URL canónico.
