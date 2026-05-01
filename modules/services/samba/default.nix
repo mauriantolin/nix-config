@@ -98,5 +98,17 @@ in
     # Firewall: 445/tcp en LAN. `lo` y `tailscale0` ya están en trustedInterfaces (Fase A),
     # no hace falta abrir puerto ahí.
     networking.firewall.interfaces.${cfg.lanInterface}.allowedTCPPorts = [ 445 ];
+
+    # Defensa en profundidad: dropeo explícito de IPv6 inbound a :445 en enp2s0.
+    # La interfaz tiene IPv6 público (2800:...) asignado por el ISP; si el router
+    # deja pasar IPv6 inbound desde internet, cualquiera podría tocar smbd.
+    # IPv4 en enp2s0 queda permitido vía la regla de arriba (port-forward 445 no existe
+    # y hay NAT en el router). `-I` inserta al tope para ganarle al accept.
+    networking.firewall.extraCommands = ''
+      ip6tables -I nixos-fw -i ${cfg.lanInterface} -p tcp --dport 445 -j nixos-fw-refuse
+    '';
+    networking.firewall.extraStopCommands = ''
+      ip6tables -D nixos-fw -i ${cfg.lanInterface} -p tcp --dport 445 -j nixos-fw-refuse 2>/dev/null || true
+    '';
   };
 }
