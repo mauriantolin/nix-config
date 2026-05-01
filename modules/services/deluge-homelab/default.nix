@@ -89,6 +89,10 @@ in
         move_completed_path = cfg.downloadDir;
         torrentfiles_location = "/var/lib/deluge/torrents";
         plugins_location = "/var/lib/deluge/plugins";
+
+        # Label plugin: requerido por Sonarr/Radarr para tv-sonarr/movies-radarr
+        # categories. Bundled con Deluge core, solo hay que enable.
+        enabled_plugins = [ "Label" ];
         copy_torrent_file = true;
         del_copy_torrent_file = false;
 
