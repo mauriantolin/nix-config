@@ -303,6 +303,23 @@
       # paperless expone /metrics? Comentado hasta validar (2.x lo trae detrás
       # de PAPERLESS_ENABLE_METRICS=true). Activar cuando se confirme con curl.
       # paperless = { url = "127.0.0.1:8000"; metricsPath = "/metrics"; };
+
+      # Phase 7b — Keycloak Quarkus expone /metrics en management interface :9000
+      # (separado del :8080 público). Loopback only.
+      keycloak                = { url = "127.0.0.1:9000"; metricsPath = "/metrics"; };
+
+      # Phase 7b — oauth2-proxy multi-instance metrics (listenPort + 100).
+      # Métricas: oauth2_proxy_requests_total, oauth2_proxy_response_duration_seconds,
+      # oauth2_proxy_sessions_total. Una serie por instancia → permite ver auth
+      # health por servicio.
+      oauth2-proxy-sonarr     = { url = "127.0.0.1:4281"; };
+      oauth2-proxy-radarr     = { url = "127.0.0.1:4282"; };
+      oauth2-proxy-prowlarr   = { url = "127.0.0.1:4283"; };
+      oauth2-proxy-bazarr     = { url = "127.0.0.1:4284"; };
+      oauth2-proxy-deluge     = { url = "127.0.0.1:4285"; };
+      oauth2-proxy-homepage   = { url = "127.0.0.1:4286"; };
+      oauth2-proxy-kuma       = { url = "127.0.0.1:4287"; };
+      oauth2-proxy-prometheus = { url = "127.0.0.1:4288"; };
     };
     blackboxTargets = [
       "https://vault.mauricioantolin.com"

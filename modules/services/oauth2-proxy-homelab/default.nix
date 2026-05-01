@@ -37,6 +37,9 @@ let
       # Wrapper script: lee secrets desde $CREDENTIALS_DIRECTORY (LoadCredential
       # los expone como files con permisos restringidos), exporta como env y
       # exec oauth2-proxy. Evita pasar secrets como CLI args (visibles en `ps`).
+      # Metrics port: listenPort + 100 (4181→4281, 4188→4288). Loopback only;
+      # Prometheus scrape lo lee desde 127.0.0.1.
+      metricsPort = inst.listenPort + 100;
       startScript = pkgs.writeShellScript "oauth2-proxy-${name}-start" ''
         set -euo pipefail
         export OAUTH2_PROXY_CLIENT_SECRET=$(cat "$CREDENTIALS_DIRECTORY/client-secret")
@@ -48,6 +51,7 @@ let
           --scope=${lib.escapeShellArg "openid email profile"} \
           --email-domain=* \
           --http-address=${lib.escapeShellArg "127.0.0.1:${toString inst.listenPort}"} \
+          --metrics-address=${lib.escapeShellArg "127.0.0.1:${toString metricsPort}"} \
           --upstream=${lib.escapeShellArg inst.upstream} \
           --reverse-proxy=true \
           --cookie-secure=true \
