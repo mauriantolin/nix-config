@@ -35,29 +35,31 @@ in
     services.samba = {
       enable = true;
       openFirewall = false;   # firewall lo manejamos nosotros per-iface
-      securityType = "user";
-      extraConfig = ''
-        workgroup            = WORKGROUP
-        server string        = home-server
-        server role          = standalone server
-        min protocol         = SMB3
-        map to guest         = Never
-        dns proxy            = no
-        log file             = /var/log/samba/log.%m
-        max log size         = 1000
-        logging              = file
-        interfaces           = lo ${cfg.lanInterface} tailscale0
-        bind interfaces only = yes
-      '';
-      shares.${cfg.user} = {
-        path              = cfg.sharePath;
-        comment           = "${cfg.user} personal share";
-        browseable        = "yes";
-        "read only"       = "no";
-        "guest ok"        = "no";
-        "create mask"     = "0644";
-        "directory mask"  = "0755";
-        "valid users"     = cfg.user;
+      settings = {
+        global = {
+          "workgroup"            = "WORKGROUP";
+          "server string"        = "home-server";
+          "server role"          = "standalone server";
+          "security"             = "user";
+          "min protocol"         = "SMB3";
+          "map to guest"         = "Never";
+          "dns proxy"            = "no";
+          "log file"             = "/var/log/samba/log.%m";
+          "max log size"         = "1000";
+          "logging"              = "file";
+          "interfaces"           = "lo ${cfg.lanInterface} tailscale0";
+          "bind interfaces only" = "yes";
+        };
+        ${cfg.user} = {
+          "path"             = cfg.sharePath;
+          "comment"          = "${cfg.user} personal share";
+          "browseable"       = "yes";
+          "read only"        = "no";
+          "guest ok"         = "no";
+          "create mask"      = "0644";
+          "directory mask"   = "0755";
+          "valid users"      = cfg.user;
+        };
       };
     };
 
