@@ -120,6 +120,12 @@ in
 
         # Redis local Unix socket dedicado a paperless
         PAPERLESS_REDIS = "unix:///run/redis-paperless/redis.sock";
+      } // lib.optionalAttrs cfg.oidc.enable {
+        # Registra el provider OIDC de allauth en INSTALLED_APPS de Django.
+        # Sin esto, PAPERLESS_SOCIALACCOUNT_PROVIDERS se carga pero allauth no
+        # registra las URLs /accounts/oidc/<provider_id>/login/ → redirect a
+        # /accounts/login/?next=... en lugar del flow OIDC.
+        PAPERLESS_APPS = "allauth.socialaccount.providers.openid_connect";
       };
     };
 
