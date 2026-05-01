@@ -6,13 +6,17 @@
     - Vaultwarden:
         icon: bitwarden.png
         href: https://vault.mauricioantolin.com
-        description: Password manager (Bitwarden fork) — login con SSO
+        description: Password manager — login con SSO
 
 - Productivity:
     - Paperless-ngx:
         icon: paperless-ngx.png
         href: https://paperless.mauricioantolin.com
         description: DMS / OCR — drop PDFs en \\home-server\paperless-consume
+        widget:
+          type: paperlessngx
+          url: http://host.containers.internal:8000
+          key: "{{HOMEPAGE_VAR_PAPERLESS_TOKEN}}"
     - Radicale:
         icon: radicale.png
         href: https://cal.mauricioantolin.com
@@ -23,50 +27,84 @@
         icon: jellyfin.png
         href: https://home-server.tailee5654.ts.net:8196/
         description: Streaming media — SSO via plugin
+        # Widget pendiente: requiere API key de Jellyfin. Generar en:
+        # Dashboard → Advanced → API Keys → "+", encrypt al .age, sumar.
     - Jellyseerr:
         icon: jellyseerr.png
         href: https://requests.mauricioantolin.com
         description: Pedir series / movies — auth Jellyfin
+        # Widget pendiente: requiere API key (Settings → General → API Key).
     - Sonarr:
         icon: sonarr.png
         href: https://sonarr.mauricioantolin.com
         description: TV automation — SSO oauth2-proxy
+        widget:
+          type: sonarr
+          url: http://host.containers.internal:8989
+          key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+          enableQueue: true
     - Radarr:
         icon: radarr.png
         href: https://radarr.mauricioantolin.com
         description: Movies automation — SSO oauth2-proxy
+        widget:
+          type: radarr
+          url: http://host.containers.internal:7878
+          key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
+          enableQueue: true
     - Bazarr:
         icon: bazarr.png
         href: https://bazarr.mauricioantolin.com
         description: Subtítulos — SSO oauth2-proxy
+        widget:
+          type: bazarr
+          url: http://host.containers.internal:6767
+          key: "{{HOMEPAGE_VAR_BAZARR_KEY}}"
     - Prowlarr:
         icon: prowlarr.png
         href: https://prowlarr.mauricioantolin.com
         description: Indexer aggregator — SSO oauth2-proxy
+        widget:
+          type: prowlarr
+          url: http://host.containers.internal:9696
+          key: "{{HOMEPAGE_VAR_PROWLARR_KEY}}"
     - Deluge:
         icon: deluge.png
         href: https://home-server.tailee5654.ts.net:8212/
-        description: Bittorrent client — SSO oauth2-proxy (tailnet only)
+        description: Bittorrent — SSO oauth2-proxy (tailnet only)
+        widget:
+          type: deluge
+          url: http://host.containers.internal:8112
+          password: "{{HOMEPAGE_VAR_DELUGE_PASS}}"
 
 - Observability:
     - Grafana:
         icon: grafana.png
         href: https://home-server.tailee5654.ts.net:3443/
         description: Dashboards (Homelab / ZFS / SSO) — SSO nativo
+        widget:
+          type: grafana
+          url: http://host.containers.internal:3030
+          username: admin
+          password: "{{HOMEPAGE_VAR_GRAFANA_PASS}}"
     - Prometheus:
         icon: prometheus.png
         href: https://home-server.tailee5654.ts.net:9443/
         description: Metrics + alert rules — SSO oauth2-proxy
+        widget:
+          type: prometheus
+          url: http://host.containers.internal:9090
     - Uptime Kuma:
         icon: uptime-kuma.png
         href: https://uptime.mauricioantolin.com
         description: Uptime status checks
         widget:
           type: uptimekuma
-          # Desde el container Homepage, 127.0.0.1 es el container mismo. Para
-          # alcanzar Kuma en el host usamos host.containers.internal vía bridge podman.
           url: http://host.containers.internal:3001
           slug: homelab
     - Alertmanager:
         icon: alertmanager.png
         description: Email a suscripciones@ — sin UI pública (loopback :9093)
+        widget:
+          type: alertmanager
+          url: http://host.containers.internal:9093
