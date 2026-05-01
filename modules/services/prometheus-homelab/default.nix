@@ -246,15 +246,12 @@ in
     };
 
     # ── Storage ───────────────────────────────────────────────────────────────
-    # Prometheus crea su propio data dir (/var/lib/prometheus2) con el module NixOS;
-    # nosotros pre-creamos el padre con ownership correcto cuando el dataset es nuevo.
-    systemd.tmpfiles.rules = [
-      "d /var/lib/prometheus 0755 prometheus prometheus -"
-    ];
-
-    # Asegurar que prometheus arranca DESPUÉS del mount del dataset ZFS.
-    systemd.services.prometheus.after = [ "var-lib-prometheus.mount" ];
-    systemd.services.prometheus.requires = [ "var-lib-prometheus.mount" ];
+    # NixOS prometheus module usa stateDir=prometheus2 → /var/lib/prometheus2.
+    # systemd StateDirectory=prometheus2 chowna automáticamente al user prometheus
+    # cuando el path existe (nuestro mount lo crea con root:root, systemd lo arregla).
+    # Sumamos `after` explícito para que el TSDB no escriba antes del mount.
+    systemd.services.prometheus.after = [ "var-lib-prometheus2.mount" ];
+    systemd.services.prometheus.requires = [ "var-lib-prometheus2.mount" ];
 
     # postgres-exporter depende de postgres (peer auth → socket disponible).
     systemd.services.prometheus-postgres-exporter.after = [ "postgresql.service" ];
