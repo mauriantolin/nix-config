@@ -94,8 +94,7 @@ in
       enable32Bit = true;
       extraPackages = with pkgs; [
         intel-media-driver       # iHD (Broadwell+)
-        vaapiIntel               # i965 (Ivy/Haswell era — backup driver)
-        intel-vaapi-driver       # alias del anterior en algunos releases
+        intel-vaapi-driver       # i965 (Ivy/Haswell era — ex-vaapiIntel)
         libvdpau-va-gl
       ];
     };
