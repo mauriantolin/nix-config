@@ -332,17 +332,15 @@
 
   # ── D.3 — Keycloak SSO ──────────────────────────────────────────────────────
   # Quarkus distro detrás de CF Tunnel; backend postgres-shared, dataset cifrado.
-  # SMTP arranca deshabilitado: hace falta el email del Workspace user (donde
-  # se generó el App Password) para activarlo. Una vez confirmado, flip a:
-  #   smtp = { enable = true; username = "<workspace-user>@mauricioantolin.com"; };
-  # El password ya está en agenix (keycloak-smtp-pass.age).
+  # SMTP via Google Workspace SMTP Relay — App Password en agenix (keycloak-smtp-pass).
+  # username = workspace user real (autentica el relay); from = alias Send-As
+  # (configurado en ese user via Gmail Settings → Accounts → "Send mail as").
   services.keycloak-homelab = {
     enable = true;
     smtp = {
-      enable = false;
-      # Placeholder eval-safe — el módulo lee cfg.smtp.username incluso con
-      # smtp.enable=false (para popular la env var SMTP_USER del bootstrap).
-      username = "PENDING_WORKSPACE_USER_EMAIL";
+      enable = true;
+      username = "admin@mauricioantolin.com";
+      # `from` default = "auth@mauricioantolin.com" (alias Send-As ya creado).
     };
   };
 

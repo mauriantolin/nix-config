@@ -141,6 +141,14 @@ check "20 issuer URL canónico = https://auth.* (sin port :8180, sin http://)" s
   ISS=\$(curl -sf http://127.0.0.1:8180/realms/homelab/.well-known/openid-configuration | jq -r .issuer)
   [ \"\$ISS\" = 'https://auth.mauricioantolin.com/realms/homelab' ]"
 
+check "21 SMTP configurado en realm homelab (smtp-relay.gmail.com:587)" ssh "$HOST" "
+  pass=\$(sudo cat /run/agenix/keycloak-admin-pass)
+  TOKEN=\$(curl -sf -X POST 'http://127.0.0.1:8180/realms/master/protocol/openid-connect/token' \
+    -d 'username=admin' --data-urlencode \"password=\$pass\" \
+    -d 'grant_type=password&client_id=admin-cli' | jq -r .access_token)
+  SMTP=\$(curl -sf -H \"Authorization: Bearer \$TOKEN\" 'http://127.0.0.1:8180/admin/realms/homelab' | jq -r '.smtpServer.host + \":\" + .smtpServer.port + \"|user=\" + .smtpServer.user')
+  [ \"\$SMTP\" = 'smtp-relay.gmail.com:587|user=admin@mauricioantolin.com' ]"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "✓ Fase D.3 verde"

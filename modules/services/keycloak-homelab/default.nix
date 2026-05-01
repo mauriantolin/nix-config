@@ -372,6 +372,27 @@ in
           fi
         fi
 
+        # 4. Sync SMTP del realm homelab (idempotent — corre SIEMPRE que SMTP_ENABLE=1).
+        # Esto cubre el caso "realm ya existe pero SMTP cambio o se habilito post-import".
+        # PUT /admin/realms/homelab con smtpServer hace patch del field a nivel realm.
+        if [ "$SMTP_ENABLE" = "1" ]; then
+          smtp_pass_val=$(cat "$CREDENTIALS_DIRECTORY/smtp-pass")
+          echo "[bootstrap] sync SMTP server settings (host=$SMTP_HOST user=$SMTP_USER from=$SMTP_FROM)"
+          curl -sf -X PUT "$KC_URL/admin/realms/homelab" \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg host "$SMTP_HOST" --arg port "$SMTP_PORT" \
+              --arg user "$SMTP_USER" --arg pass "$smtp_pass_val" \
+              --arg from "$SMTP_FROM" --arg display "$SMTP_FROM_DISPLAY" \
+              '{smtpServer: {
+                host: $host, port: $port, auth: "true",
+                user: $user, password: $pass,
+                from: $from, fromDisplayName: $display,
+                starttls: "true", ssl: "false"
+              }}')"
+          echo "[bootstrap] SMTP sync OK"
+        fi
+
         echo "[bootstrap] DONE"
       '';
     };
