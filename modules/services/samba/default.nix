@@ -74,8 +74,8 @@ in
     systemd.services.samba-user-setup = {
       description = "Ensure SMB user `${cfg.user}` exists with password from agenix";
       after    = [ "agenix.service" "local-fs.target" ];
-      wantedBy = [ "smb.service" ];
-      before   = [ "smb.service" ];
+      wantedBy = [ "samba-smbd.service" ];
+      before   = [ "samba-smbd.service" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
