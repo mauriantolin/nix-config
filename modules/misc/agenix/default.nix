@@ -34,5 +34,28 @@ in
       owner = "root";
       group = "root";
     };
+
+    # R0 — Vaultwarden auto-sync helper credentials.
+    # Mode 0400 root: solo el helper rotate.sh los lee via sudo. No los consume
+    # ningún systemd unit; viven en /run/agenix porque agenix es el único path
+    # consistente del repo para "secret descifrado en tmpfs durante boot".
+    bwApiClientId = {
+      file = "${secretsRoot}/bw-api-clientid.age";
+      mode = "0400";
+      owner = "root";
+      group = "root";
+    };
+    bwApiClientSecret = {
+      file = "${secretsRoot}/bw-api-clientsecret.age";
+      mode = "0400";
+      owner = "root";
+      group = "root";
+    };
+    bwMauriMaster = {
+      file = "${secretsRoot}/bw-mauri-master.age";
+      mode = "0400";
+      owner = "root";
+      group = "root";
+    };
   };
 }
