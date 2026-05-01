@@ -15,7 +15,7 @@
         description: DMS / OCR — drop PDFs en \\home-server\paperless-consume
         widget:
           type: paperlessngx
-          url: http://host.containers.internal:8000
+          url: http://127.0.0.1:8000
           key: "{{HOMEPAGE_VAR_PAPERLESS_TOKEN}}"
     - Radicale:
         icon: radicale.png
@@ -40,7 +40,7 @@
         description: TV automation — SSO oauth2-proxy
         widget:
           type: sonarr
-          url: http://host.containers.internal:8989
+          url: http://127.0.0.1:8989
           key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
           enableQueue: true
     - Radarr:
@@ -49,7 +49,7 @@
         description: Movies automation — SSO oauth2-proxy
         widget:
           type: radarr
-          url: http://host.containers.internal:7878
+          url: http://127.0.0.1:7878
           key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
           enableQueue: true
     - Bazarr:
@@ -58,7 +58,7 @@
         description: Subtítulos — SSO oauth2-proxy
         widget:
           type: bazarr
-          url: http://host.containers.internal:6767
+          url: http://127.0.0.1:6767
           key: "{{HOMEPAGE_VAR_BAZARR_KEY}}"
     - Prowlarr:
         icon: prowlarr.png
@@ -66,7 +66,7 @@
         description: Indexer aggregator — SSO oauth2-proxy
         widget:
           type: prowlarr
-          url: http://host.containers.internal:9696
+          url: http://127.0.0.1:9696
           key: "{{HOMEPAGE_VAR_PROWLARR_KEY}}"
     - Deluge:
         icon: deluge.png
@@ -74,7 +74,7 @@
         description: Bittorrent — SSO oauth2-proxy (tailnet only)
         widget:
           type: deluge
-          url: http://host.containers.internal:8112
+          url: http://127.0.0.1:8112
           password: "{{HOMEPAGE_VAR_DELUGE_PASS}}"
 
 - Observability:
@@ -84,7 +84,7 @@
         description: Dashboards (Homelab / ZFS / SSO) — SSO nativo
         widget:
           type: grafana
-          url: http://host.containers.internal:3030
+          url: http://127.0.0.1:3030
           username: admin
           password: "{{HOMEPAGE_VAR_GRAFANA_PASS}}"
     - Prometheus:
@@ -93,18 +93,18 @@
         description: Metrics + alert rules — SSO oauth2-proxy
         widget:
           type: prometheus
-          url: http://host.containers.internal:9090
+          url: http://127.0.0.1:9090
     - Uptime Kuma:
         icon: uptime-kuma.png
         href: https://uptime.mauricioantolin.com
         description: Uptime status checks
         widget:
           type: uptimekuma
-          url: http://host.containers.internal:3001
+          url: http://127.0.0.1:3001
           slug: homelab
     - Alertmanager:
         icon: alertmanager.png
         description: Email a suscripciones@ — sin UI pública (loopback :9093)
         widget:
           type: alertmanager
-          url: http://host.containers.internal:9093
+          url: http://127.0.0.1:9093

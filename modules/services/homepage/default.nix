@@ -61,13 +61,18 @@ in
 
     virtualisation.oci-containers.containers.homepage = {
       image = cfg.image;
-      ports = [ "127.0.0.1:${toString cfg.port}:3000" ];
+      # Phase 8 — `--network=host` permite que widgets alcancen servicios on-host
+      # bind a 127.0.0.1 (paperless/grafana/prometheus/alertmanager) sin hacer
+      # 0.0.0.0-bind a cada uno. HOSTNAME=127.0.0.1 mantiene homepage también en
+      # loopback. `ports` se ignora en host mode (mutex con port-mapping).
+      ports = [ ];
       environment = {
         HOMEPAGE_ALLOWED_HOSTS = cfg.allowedHosts;
         PUID = "1000";
         PGID = "1000";
+        HOSTNAME = "127.0.0.1";
       };
-      # Phase 8 — widget secrets via env file generado por homepage-secrets-bootstrap.
+      # Widget secrets via env file generado por homepage-secrets-bootstrap.
       # Podman lee el archivo a startup; el container nunca lo ve en su filesystem.
       environmentFiles =
         lib.optional cfg.secretsBootstrap.enable
@@ -78,7 +83,7 @@ in
         "/var/lib/homepage/config:/app/config"
         "/var/lib/homepage/icons:/app/public/icons"
       ];
-      extraOptions = [ "--pull=missing" ];
+      extraOptions = [ "--pull=missing" "--network=host" ];
     };
 
     # Copia los archivos de config (del store de Nix, inmutables) a un
