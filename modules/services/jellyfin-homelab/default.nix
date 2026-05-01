@@ -277,27 +277,45 @@ in
 
     # ── SSO plugin install (9p4/jellyfin-plugin-sso) ─────────────────────────
     # Pre-built .dll del plugin se copia a <dataDir>/plugins/SSO-Auth_<ver>/.
-    # Idempotente: ejecuta cada deploy y sobreescribe (si la version cambia, el
-    # dir nuevo aparece y Jellyfin lo detecta — el viejo se puede limpiar a mano).
+    # Idempotente: chequea marker file para evitar re-copy + restart Jellyfin
+    # solo si la versión cambió (primer deploy o version bump).
+    #
+    # wantedBy multi-user.target asegura que corre en cada activate/boot — no
+    # solo cuando jellyfin se restarta (si el unit no cambia, jellyfin no
+    # rearranca y un wantedBy=jellyfin.service no dispara).
     systemd.services.jellyfin-sso-plugin-install = lib.mkIf cfg.sso.enable (
       let
         plugin = pkgs.callPackage ./sso-plugin.nix { };
         targetDir = "${cfg.configDir}/plugins/SSO-Auth_${plugin.version}";
+        marker = "${cfg.configDir}/plugins/.sso-auth-version";
       in {
         description = "Install SSO-Auth plugin into Jellyfin plugins dir";
         after = [ "jellyfin-storage-prepare.service" ];
         before = [ "jellyfin.service" ];
-        wantedBy = [ "jellyfin.service" ];
+        wantedBy = [ "jellyfin.service" "multi-user.target" ];
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
         };
         script = ''
+          set -euo pipefail
+          INSTALLED=""
+          if [ -f "${marker}" ]; then INSTALLED=$(cat "${marker}"); fi
+
           ${pkgs.coreutils}/bin/install -d -m 0750 -o jellyfin -g media \
             ${cfg.configDir}/plugins ${targetDir}
           ${pkgs.coreutils}/bin/cp -RL ${plugin}/plugin/. ${targetDir}/
           ${pkgs.coreutils}/bin/chown -R jellyfin:media ${targetDir}
           ${pkgs.coreutils}/bin/chmod -R u+rwX,g+rX,o-rwx ${targetDir}
+
+          # Update marker; trigger jellyfin restart si la version cambió
+          # (jellyfin solo rescanea plugins al startup).
+          ${pkgs.coreutils}/bin/echo -n "${plugin.version}" > "${marker}"
+          ${pkgs.coreutils}/bin/chown jellyfin:media "${marker}"
+          if [ "$INSTALLED" != "${plugin.version}" ]; then
+            echo "[sso-plugin-install] version cambió ($INSTALLED → ${plugin.version}); request restart"
+            ${pkgs.systemd}/bin/systemctl try-restart jellyfin.service || true
+          fi
         '';
       });
 
@@ -314,15 +332,16 @@ in
 
     systemd.services.jellyfin-sso-bootstrap = lib.mkIf cfg.sso.enable {
       description = "Configure Keycloak SSO provider via plugin API";
-      after = [ "jellyfin-bootstrap.service" ];
+      after = [ "jellyfin-bootstrap.service" "jellyfin.service" ];
       requires = [ "jellyfin.service" ];
       wantedBy = [ "multi-user.target" ];
       path = with pkgs; [ curl jq coreutils ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        Restart = "on-failure";
-        RestartSec = "30s";
+        # Sin Restart loop: si la autenticación con admin-pass falla (ej: el
+        # password en agenix no matches el manual de la UI inicial), el script
+        # exit 0 con warning — usuario configura SSO via UI manualmente.
         LoadCredential = [
           "admin-pass:${config.age.secrets.jellyfinAdminPass.path}"
           "sso-secret:${config.age.secrets.jellyfinSsoSecret.path}"
@@ -345,15 +364,25 @@ in
         done
 
         # Login para obtener token (siempre — necesario para llamar /sso/*).
-        TOKEN=$(curl -sf -X POST "$JF/Users/AuthenticateByName" \
+        # Si el password en agenix no matches el set manualmente en la UI inicial,
+        # el login falla con 401 — exit 0 con warning para no bloquear el deploy.
+        AUTH_RESP=$(curl -s -w '\n%{http_code}' -X POST "$JF/Users/AuthenticateByName" \
           -H 'Content-Type: application/json' \
           -H 'Authorization: MediaBrowser Client="bootstrap", Device="nixos", DeviceId="nixos-home-server", Version="1.0"' \
-          -d "{\"Username\":\"$ADMIN_USER\",\"Pw\":\"$ADMIN_PASS\"}" \
-          | jq -r .AccessToken)
+          -d "{\"Username\":\"$ADMIN_USER\",\"Pw\":\"$ADMIN_PASS\"}")
+        AUTH_CODE=$(echo "$AUTH_RESP" | tail -n1)
+        AUTH_BODY=$(echo "$AUTH_RESP" | sed '$d')
 
+        if [ "$AUTH_CODE" != "200" ]; then
+          echo "[sso-bootstrap] login admin falló HTTP $AUTH_CODE — agenix password puede no matchear el set manualmente. Configura SSO via UI:" >&2
+          echo "[sso-bootstrap]   Dashboard → Plugins → SSO-Auth → Add OID provider" >&2
+          echo "[sso-bootstrap]   Endpoint: $AUTHORITY  ClientId: $CLIENT_ID  Secret: <agenix oidc-client-jellyfin>" >&2
+          exit 0
+        fi
+        TOKEN=$(echo "$AUTH_BODY" | jq -r .AccessToken)
         if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
-          echo "[sso-bootstrap] no se pudo obtener token (admin password mismatch?)" >&2
-          exit 1
+          echo "[sso-bootstrap] login OK pero AccessToken vacío — formato API distinto?" >&2
+          exit 0
         fi
 
         # Esperar a que el plugin SSO-Auth termine de cargar (el endpoint
