@@ -61,6 +61,16 @@ check "7.1 tailscale-serve-config.service active"            ssh "$HOST" "system
 check "7.2 tailnet HTTPS / (Homepage)"                       ssh "$HOST" "curl -fsS -o /dev/null https://$TAILNET_HOST/"
 check "7.3 tailnet HTTPS:8443 (Kuma puerto dedicado)"         ssh "$HOST" "curl -fsS -o /dev/null https://$TAILNET_HOST:8443/"
 
+# Phase 8 — reboot limpio (última verificación antes del tag phase-c1-done)
+# Se saltea si REBOOT=0 en env (para runs rápidos; por default reboot).
+if [ "${REBOOT:-1}" = "1" ]; then
+check "8.1 reboot limpio — todos los servicios vuelven <120s"    bash -c '
+  ssh "'"$HOST"'" "sudo reboot" >/dev/null 2>&1 || true
+  sleep 100
+  ssh "'"$HOST"'" "uptime && systemctl is-active vaultwarden uptime-kuma podman-homepage tailscale-serve-config fail2ban | grep -cv active" | tail -1 | grep -q "^0\$"
+'
+fi
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "✓ Fase C.1 verde"
