@@ -21,6 +21,8 @@
     # E.3 — observabilidad (prometheus + grafana + exporters)
     ../../../services/prometheus-homelab
     ../../../services/grafana-homelab
+    # E.2 — media stack (Jellyfin primero; *arr/deluge/jellyseerr en sub-deploys)
+    ../../../services/jellyfin-homelab
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -39,6 +41,12 @@
       # E.3 — observabilidad
       "rpool/services/prometheus"      = { };
       "rpool/services/grafana"         = { };
+      # E.2a — media (Jellyfin)
+      "rpool/services/jellyfin"        = { };
+      "rpool/services/jellyfin-cache"  = { };
+      "tank/storage/media/movies"      = { recordsize = "1M"; };
+      "tank/storage/media/tv"          = { recordsize = "1M"; };
+      "tank/storage/media/music"       = { recordsize = "1M"; };
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
@@ -48,6 +56,12 @@
       # E.3
       "var-lib-prometheus2.mount"
       "var-lib-grafana.mount"
+      # E.2a
+      "var-lib-jellyfin.mount"
+      "var-cache-jellyfin.mount"
+      "srv-storage-media-movies.mount"
+      "srv-storage-media-tv.mount"
+      "srv-storage-media-music.mount"
     ];
   };
 
@@ -138,6 +152,8 @@
       # E.3 — Prometheus en :9443/ (uso interno; rara vez se accede directo,
       # pero útil para debug de scrape targets sin SSH).
       prometheus = { Proxy = "http://127.0.0.1:9090"; Port = 9443; };
+      # E.2a — Jellyfin en su puerto nativo :8096 vía TS Serve
+      jellyfin = { Proxy = "http://127.0.0.1:8096"; Port = 8096; };
     };
   };
 
@@ -226,6 +242,13 @@
 
   services.grafana-homelab.enable = true;
 
+  # ── E.2a — Jellyfin ─────────────────────────────────────────────────────────
+  services.jellyfin-homelab = {
+    enable = true;
+    hwAccel = true;
+    # autoBootstrap=true por default → crea admin user + 3 libraries en first-boot.
+  };
+
   networking = {
     hostName = "home-server";
     hostId = "3834b250";
@@ -273,6 +296,27 @@
   };
   fileSystems."/var/lib/grafana" = {
     device = "rpool/services/grafana";
+    fsType = "zfs";
+  };
+  # E.2a — Jellyfin + media libraries
+  fileSystems."/var/lib/jellyfin" = {
+    device = "rpool/services/jellyfin";
+    fsType = "zfs";
+  };
+  fileSystems."/var/cache/jellyfin" = {
+    device = "rpool/services/jellyfin-cache";
+    fsType = "zfs";
+  };
+  fileSystems."/srv/storage/media/movies" = {
+    device = "tank/storage/media/movies";
+    fsType = "zfs";
+  };
+  fileSystems."/srv/storage/media/tv" = {
+    device = "tank/storage/media/tv";
+    fsType = "zfs";
+  };
+  fileSystems."/srv/storage/media/music" = {
+    device = "tank/storage/media/music";
     fsType = "zfs";
   };
   # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared

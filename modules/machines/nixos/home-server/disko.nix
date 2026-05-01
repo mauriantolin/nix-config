@@ -173,6 +173,20 @@
             mountpoint = "/var/lib/grafana";
             options.mountpoint = "legacy";
           };
+          # E.2a — Jellyfin
+          "services/jellyfin" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/jellyfin";
+            options.mountpoint = "legacy";
+          };
+          "services/jellyfin-cache" = {
+            type = "zfs_fs";
+            mountpoint = "/var/cache/jellyfin";
+            options = {
+              mountpoint = "legacy";
+              "com.sun:auto-snapshot" = "false";  # cache, no snapshot
+            };
+          };
         };
       };
 
@@ -204,6 +218,31 @@
             type = "zfs_fs";
             mountpoint = "/srv/storage/media";
             options.mountpoint = "legacy";
+          };
+          # E.2a — sub-datasets media. recordsize=1M para files grandes (videos).
+          "storage/media/movies" = {
+            type = "zfs_fs";
+            mountpoint = "/srv/storage/media/movies";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";
+            };
+          };
+          "storage/media/tv" = {
+            type = "zfs_fs";
+            mountpoint = "/srv/storage/media/tv";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";
+            };
+          };
+          "storage/media/music" = {
+            type = "zfs_fs";
+            mountpoint = "/srv/storage/media/music";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";
+            };
           };
           "backups" = {
             type = "zfs_fs";
