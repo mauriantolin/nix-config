@@ -250,11 +250,11 @@
     "secrets": {
       "flake": false,
       "locked": {
-        "lastModified": 1777614415,
-        "narHash": "sha256-lxghanH8mGV6B+0FNDC1yRhXJdrfz/+SZ1sqd4V0oNE=",
+        "lastModified": 1777615000,
+        "narHash": "sha256-/WVwtRad/+sOM6nJHgOgdG8Ks3Z8t3Hb+Z+NGk5oXXU=",
         "ref": "refs/heads/main",
-        "rev": "07368ab444136bcf9cb21e1cf6513e3b6be0d79d",
-        "revCount": 36,
+        "rev": "b781ff6d22bfac0a7db7a46c21d0d26823175fd1",
+        "revCount": 37,
         "type": "git",
         "url": "ssh://git@github.com/mauriantolin/nix-private.git"
       },
