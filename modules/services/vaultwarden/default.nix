@@ -57,10 +57,12 @@ in
     services.vaultwarden = {
       enable = true;
       dbBackend = "sqlite";
-      # Multiple env files: el primer agenix tiene ADMIN_TOKEN; cuando sso.enable
-      # se agrega el segundo con SSO_CLIENT_SECRET. Ambos los renderiza systemd
-      # antes de arrancar el unit.
-      environmentFile = config.age.secrets.vaultwardenAdminToken.path;
+      # Sin SSO: env file = .age con ADMIN_TOKEN solo.
+      # Con SSO: env file = combined rendered en runtime (ADMIN_TOKEN + SSO_CLIENT_SECRET).
+      environmentFile =
+        if cfg.sso.enable
+        then "/run/vaultwarden-sso/combined.env"
+        else config.age.secrets.vaultwardenAdminToken.path;
       config = {
         ROCKET_ADDRESS       = "127.0.0.1";
         ROCKET_PORT          = 8222;
@@ -104,18 +106,11 @@ in
       mode  = "0400";
     };
 
-    # Inyectar SSO_CLIENT_SECRET via env file separado (los inputs sumen).
-    systemd.services.vaultwarden.serviceConfig = lib.mkIf cfg.sso.enable {
-      EnvironmentFile = [
-        # El primer EnvironmentFile lo declara services.vaultwarden con el
-        # admin token; agregamos un segundo con el SSO secret. mkIf garantiza
-        # que solo se aplica con SSO on; lib.mkAfter mantiene el orden.
-        (lib.mkAfter "/run/vaultwarden-sso/sso.env")
-      ];
-    };
-
+    # Render env file combinado (ADMIN_TOKEN del .age original + SSO_CLIENT_SECRET).
+    # Razón: services.vaultwarden expone solo un environmentFile (string), y el .age
+    # raw ya tiene formato `ADMIN_TOKEN=...`. Concatenamos ambos en /run/vaultwarden-sso/.
     systemd.services.vaultwarden-sso-env-prepare = lib.mkIf cfg.sso.enable {
-      description = "Render SSO_CLIENT_SECRET env file from agenix";
+      description = "Render combined env file (admin token + SSO_CLIENT_SECRET)";
       after = [ "agenix.service" ];
       before = [ "vaultwarden.service" ];
       wantedBy = [ "vaultwarden.service" ];
@@ -126,12 +121,13 @@ in
       script = ''
         umask 077
         install -d -m 0750 -o vaultwarden -g vaultwarden /run/vaultwarden-sso
+        # ADMIN_TOKEN del .age (ya viene formato KEY=VALUE).
+        cat ${config.age.secrets.vaultwardenAdminToken.path} > /run/vaultwarden-sso/combined.env
+        # SSO_CLIENT_SECRET del .age (raw value, lo wrappeamos en KEY=VALUE).
         secret=$(cat ${config.age.secrets.vaultwardenSsoSecret.path})
-        cat > /run/vaultwarden-sso/sso.env <<EOF
-        SSO_CLIENT_SECRET=$secret
-        EOF
-        chown vaultwarden:vaultwarden /run/vaultwarden-sso/sso.env
-        chmod 0400 /run/vaultwarden-sso/sso.env
+        echo "SSO_CLIENT_SECRET=$secret" >> /run/vaultwarden-sso/combined.env
+        chown vaultwarden:vaultwarden /run/vaultwarden-sso/combined.env
+        chmod 0400 /run/vaultwarden-sso/combined.env
       '';
     };
 
