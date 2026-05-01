@@ -311,6 +311,9 @@
     # tradicional). Bootstrap automatizado deshabilitado por brittleness — wizard
     # manual desde UI toma ~30s con el pass de Vaultwarden.
     autoBootstrap = false;
+    # D.4a — SSO via Keycloak: instala el plugin 9p4/jellyfin-plugin-sso y
+    # configura el provider "keycloak" via API (idempotente).
+    sso.enable = true;
   };
 
   # ── E.2b — Deluge (Path A no-VPN) ───────────────────────────────────────────

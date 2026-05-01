@@ -61,6 +61,38 @@ in
       default = "mauri";
       description = "Nombre del admin user creado por el bootstrap.";
     };
+
+    sso = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Habilitar SSO via Keycloak con plugin 9p4/jellyfin-plugin-sso.
+          Instala el .dll en <dataDir>/plugins/ y configura el provider
+          "keycloak" via API después del bootstrap inicial.
+
+          Login local sigue activo (admin puede usar password). Plugin
+          agrega botón "Sign in with SSO" en la página de login.
+
+          Auto-creación de usuarios: el plugin acepta cualquier KC user
+          que pase autenticación; mapea email → username Jellyfin.
+        '';
+      };
+      authority = lib.mkOption {
+        type = lib.types.str;
+        default = "https://auth.mauricioantolin.com/realms/homelab";
+        description = "Issuer URL del realm Keycloak.";
+      };
+      clientId = lib.mkOption {
+        type = lib.types.str;
+        default = "jellyfin";
+      };
+      providerName = lib.mkOption {
+        type = lib.types.str;
+        default = "keycloak";
+        description = "Nombre del provider en el plugin (path: /sso/OID/<name>).";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -141,7 +173,9 @@ in
     };
 
     # ── Auto-bootstrap (admin user + libraries) ──────────────────────────────
-    age.secrets.jellyfinAdminPass = lib.mkIf cfg.autoBootstrap {
+    # admin-pass se provisiona también cuando SSO está activo (sso-bootstrap
+    # necesita login admin para llamar /sso/OID/Add).
+    age.secrets.jellyfinAdminPass = lib.mkIf (cfg.autoBootstrap || cfg.sso.enable) {
       file  = "${secretsRoot}/jellyfin-admin-pass.age";
       owner = "root";
       group = "root";
@@ -238,6 +272,143 @@ in
         create_lib "Music"    "music"    "${cfg.mediaRoot}/music"
 
         echo "[bootstrap] OK"
+      '';
+    };
+
+    # ── SSO plugin install (9p4/jellyfin-plugin-sso) ─────────────────────────
+    # Pre-built .dll del plugin se copia a <dataDir>/plugins/SSO-Auth_<ver>/.
+    # Idempotente: ejecuta cada deploy y sobreescribe (si la version cambia, el
+    # dir nuevo aparece y Jellyfin lo detecta — el viejo se puede limpiar a mano).
+    systemd.services.jellyfin-sso-plugin-install = lib.mkIf cfg.sso.enable (
+      let
+        plugin = pkgs.callPackage ./sso-plugin.nix { };
+        targetDir = "${cfg.configDir}/plugins/SSO-Auth_${plugin.version}";
+      in {
+        description = "Install SSO-Auth plugin into Jellyfin plugins dir";
+        after = [ "jellyfin-storage-prepare.service" ];
+        before = [ "jellyfin.service" ];
+        wantedBy = [ "jellyfin.service" ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+        script = ''
+          ${pkgs.coreutils}/bin/install -d -m 0750 -o jellyfin -g media \
+            ${cfg.configDir}/plugins ${targetDir}
+          ${pkgs.coreutils}/bin/cp -RL ${plugin}/plugin/. ${targetDir}/
+          ${pkgs.coreutils}/bin/chown -R jellyfin:media ${targetDir}
+          ${pkgs.coreutils}/bin/chmod -R u+rwX,g+rX,o-rwx ${targetDir}
+        '';
+      });
+
+    # ── SSO bootstrap (configurar provider keycloak via API) ─────────────────
+    # Corre después de jellyfin-bootstrap (admin user existe). Idempotente:
+    # GET /sso/OID/States retorna providers configurados — si keycloak ya está,
+    # skip. Si falla la API (plugin no cargado todavía), reintenta.
+    age.secrets.jellyfinSsoSecret = lib.mkIf cfg.sso.enable {
+      file  = "${secretsRoot}/oidc-client-jellyfin.age";
+      owner = "root";
+      group = "root";
+      mode  = "0400";
+    };
+
+    systemd.services.jellyfin-sso-bootstrap = lib.mkIf cfg.sso.enable {
+      description = "Configure Keycloak SSO provider via plugin API";
+      after = [ "jellyfin-bootstrap.service" ];
+      requires = [ "jellyfin.service" ];
+      wantedBy = [ "multi-user.target" ];
+      path = with pkgs; [ curl jq coreutils ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        Restart = "on-failure";
+        RestartSec = "30s";
+        LoadCredential = [
+          "admin-pass:${config.age.secrets.jellyfinAdminPass.path}"
+          "sso-secret:${config.age.secrets.jellyfinSsoSecret.path}"
+        ];
+      };
+      script = ''
+        set -euo pipefail
+        JF=http://127.0.0.1:${toString cfg.port}
+        ADMIN_USER=${cfg.adminUser}
+        ADMIN_PASS=$(cat "$CREDENTIALS_DIRECTORY/admin-pass")
+        SSO_SECRET=$(cat "$CREDENTIALS_DIRECTORY/sso-secret")
+        PROVIDER=${cfg.sso.providerName}
+        AUTHORITY="${cfg.sso.authority}"
+        CLIENT_ID="${cfg.sso.clientId}"
+
+        # Esperar jellyfin + plugin cargado (plugin endpoint disponible).
+        for i in $(seq 1 120); do
+          if curl -sf "$JF/System/Info/Public" >/dev/null; then break; fi
+          sleep 1
+        done
+
+        # Login para obtener token (siempre — necesario para llamar /sso/*).
+        TOKEN=$(curl -sf -X POST "$JF/Users/AuthenticateByName" \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: MediaBrowser Client="bootstrap", Device="nixos", DeviceId="nixos-home-server", Version="1.0"' \
+          -d "{\"Username\":\"$ADMIN_USER\",\"Pw\":\"$ADMIN_PASS\"}" \
+          | jq -r .AccessToken)
+
+        if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+          echo "[sso-bootstrap] no se pudo obtener token (admin password mismatch?)" >&2
+          exit 1
+        fi
+
+        # Esperar a que el plugin SSO-Auth termine de cargar (el endpoint
+        # /sso/OID/States solo responde cuando el plugin está listo).
+        for i in $(seq 1 60); do
+          STATES_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "X-Emby-Token: $TOKEN" "$JF/sso/OID/States")
+          if [ "$STATES_CODE" = "200" ]; then break; fi
+          sleep 2
+        done
+        if [ "$STATES_CODE" != "200" ]; then
+          echo "[sso-bootstrap] /sso/OID/States no responde 200 (plugin no cargado?). HTTP $STATES_CODE" >&2
+          exit 1
+        fi
+
+        # Idempotencia: si el provider ya existe, skip.
+        EXISTING=$(curl -sf -H "X-Emby-Token: $TOKEN" "$JF/sso/OID/States" \
+          | jq -r 'keys[]?' 2>/dev/null || echo "")
+        if echo "$EXISTING" | grep -qx "$PROVIDER"; then
+          echo "[sso-bootstrap] provider $PROVIDER ya configurado — skip"
+          exit 0
+        fi
+
+        # POST /sso/OID/Add/<provider> con la config completa.
+        # AdminRoles=[] significa: ningún rol KC se mapea a admin de Jellyfin
+        # automáticamente (mauri queda admin via login local).
+        BODY=$(jq -n \
+          --arg endpoint "$AUTHORITY" \
+          --arg clientid "$CLIENT_ID" \
+          --arg secret   "$SSO_SECRET" \
+          '{
+            OidEndpoint: $endpoint,
+            OidClientId: $clientid,
+            OidSecret: $secret,
+            OidScopes: ["openid","profile","email"],
+            Enabled: true,
+            EnableAuthorization: true,
+            EnableAllFolders: true,
+            EnabledFolders: [],
+            EnableFolderRoles: false,
+            FolderRoleMapping: [],
+            Roles: [],
+            AdminRoles: [],
+            RoleClaim: "",
+            DefaultUsernameClaim: "preferred_username",
+            DefaultProvider: "",
+            CanonicalLinks: []
+          }')
+
+        curl -sf -X POST "$JF/sso/OID/Add/$PROVIDER" \
+          -H "X-Emby-Token: $TOKEN" \
+          -H 'Content-Type: application/json' \
+          -d "$BODY"
+
+        echo "[sso-bootstrap] provider $PROVIDER configurado OK"
       '';
     };
   };
