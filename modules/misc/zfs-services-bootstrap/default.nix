@@ -105,16 +105,23 @@ in
       # Corre DESPUÉS de imports + ANTES de los mount units específicos.
       # NO usar local-fs.target acá: causa ordering cycle con sysinit.target.
       # Si hay datasets encriptados, también esperamos a agenix (que poblá /run/agenix/*).
+      # Lección 2026-04-27 (D.3 fail): usar `wants` (soft) en vez de `requires` (hard)
+      # para agenix.service — si agenix tarda 1s extra, requires aborta el unit y mount
+      # falla → emergency mode. wants + after permite que esperemos sin abortar.
       after = [ "zfs-import.target" ]
         ++ lib.optional (lib.any (x: x.encrypted) (lib.attrValues cfg.datasets)) "agenix.service";
-      requires = [ "zfs-import.target" ]
-        ++ lib.optional (lib.any (x: x.encrypted) (lib.attrValues cfg.datasets)) "agenix.service";
+      requires = [ "zfs-import.target" ];
+      wants = lib.optional (lib.any (x: x.encrypted) (lib.attrValues cfg.datasets)) "agenix.service";
       before = cfg.beforeMounts;
       wantedBy = cfg.beforeMounts;
 
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        # Restart on-failure permite recovery si encryption key todavía no se decryptó
+        # (race agenix vs bootstrap). Reintentamos hasta 5 veces a 10s c/u.
+        Restart = "on-failure";
+        RestartSec = "10s";
         # CRITICAL: sin esto el systemd-default `After=sysinit.target` crea un
         # ordering cycle:
         #   local-fs.target → mount → bootstrap → sysinit.target → local-fs.target
@@ -122,6 +129,11 @@ in
         # Sumando 2 mounts más en E.3 hizo el cycle más largo y rompió grafana.
         # Bootstrap solo depende de zfs-import.target → no necesita default deps.
         DefaultDependencies = false;
+      };
+      # Espera hasta 5 retries (50s) antes de declarar fallo definitivo.
+      unitConfig = {
+        StartLimitIntervalSec = "60s";
+        StartLimitBurst = 5;
       };
 
       script =
@@ -137,6 +149,19 @@ in
                 + "-o keyformat=raw "
                 + "-o keylocation=file://${toString spec.encryptionKeyPath}"
               );
+              # Espera hasta 30s a que el key file de agenix aparezca (defensa contra
+              # race agenix vs bootstrap durante switch).
+              waitForKey = lib.optionalString spec.encrypted ''
+                for i in $(seq 1 30); do
+                  if [ -s "${toString spec.encryptionKeyPath}" ]; then break; fi
+                  echo "[zfs-services-bootstrap] esperando ${toString spec.encryptionKeyPath}... ($i/30)"
+                  sleep 1
+                done
+                if [ ! -s "${toString spec.encryptionKeyPath}" ]; then
+                  echo "[zfs-services-bootstrap] FATAL: ${toString spec.encryptionKeyPath} no existe tras 30s" >&2
+                  exit 1
+                fi
+              '';
               loadKeyOnExisting = lib.optionalString spec.encrypted ''
                 if ${pkgs.zfs}/bin/zfs get -H -o value keystatus "${ds}" 2>/dev/null | grep -q unavailable; then
                   echo "[zfs-services-bootstrap] loading key for ${ds}"
@@ -145,6 +170,7 @@ in
               '';
             in
             ''
+              ${waitForKey}
               if ! ${pkgs.zfs}/bin/zfs list -H -o name "${ds}" >/dev/null 2>&1; then
                 echo "[zfs-services-bootstrap] creating ${ds}"
                 ${pkgs.zfs}/bin/zfs create \
