@@ -49,6 +49,12 @@ check "5.1 uptime-kuma.service active"                       ssh "$HOST" "system
 check "5.2 puerto 127.0.0.1:3001 escuchando"                 ssh "$HOST" "sudo ss -tlnp | grep -q '127.0.0.1:3001'"
 check "5.3 kuma responde HTTP (2xx o 3xx)"                   ssh "$HOST" "curl -sS -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:3001/ | grep -qE '^(200|301|302|303|307|308)\$'"
 
+
+# Phase 6 — Homepage
+check "6.1 podman-homepage.service active"                   ssh "$HOST" "systemctl is-active podman-homepage | grep -q active"
+check "6.2 puerto 127.0.0.1:3000 escuchando"                 ssh "$HOST" "sudo ss -tlnp | grep -q '127.0.0.1:3000'"
+check "6.3 homepage responde HTTP 200"                       ssh "$HOST" "curl -sS -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:3000/ | grep -q '^200\$'"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "✓ Fase C.1 verde"
