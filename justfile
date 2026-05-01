@@ -50,6 +50,10 @@ smoke-c1:
 smoke-c2:
 	bash bin/smoke-test-c2.sh
 
+# Smoke test Fase D.1 — edge hardening (refactor fail2ban + samba jail + CF Access + geo-block)
+smoke-d1:
+	bash bin/smoke-test-d1.sh
+
 # Shortcut diagnóstico fail2ban
 fail2ban-status:
 	ssh mauri@home-server 'sudo fail2ban-client status'
