@@ -60,6 +60,54 @@
               ./modules/machines/nixos/home-server/vm-overlay.nix
             ];
           };
+
+          # Test machine TEMPORAL para validar módulos E.1 pre-merge sin tocar el host real.
+          # Solo se usa con `nix flake check` o `nix build .#nixosConfigurations.home-server-e1-test.config.system.build.toplevel`.
+          # Eliminar antes del merge final E.1b (cuando los módulos ya estén integrados al host real).
+          home-server-e1-test = nixpkgs.lib.nixosSystem {
+            system = "x86_64-linux";
+            specialArgs = { inherit inputs; };
+            modules = [
+              agenix.nixosModules.default
+              ./modules/services/postgres-shared
+              ./modules/services/paperless
+              ./modules/services/radicale
+              ({ config, pkgs, ... }: {
+                # Mínimo viable para que el módulo nixos eval no explote.
+                boot.loader.grub.device = "nodev";
+                fileSystems."/" = { device = "tmpfs"; fsType = "tmpfs"; };
+                system.stateVersion = "25.11";
+
+                # Stub user `mauri` (paperless lo agrega a su grupo).
+                users.users.mauri = {
+                  isNormalUser = true;
+                  uid = 1000;
+                };
+
+                # Enable los 3 módulos E.1 con valores dummy.
+                # (Los .age files NO existen en este test config; el eval no los lee, solo el path.)
+                services.postgres-shared-homelab = {
+                  enable = true;
+                  databases = {
+                    paperless = { user = "paperless"; secretFile = "/run/agenix/postgres-paperless-pass"; };
+                    grafana   = { user = "grafana";   secretFile = "/run/agenix/postgres-grafana-pass"; };
+                    nextcloud = { user = "nextcloud"; secretFile = "/run/agenix/postgres-nextcloud-pass"; };
+                    immich    = { user = "immich";    secretFile = "/run/agenix/postgres-immich-pass"; };
+                    hass      = { user = "hass";      secretFile = "/run/agenix/postgres-hass-pass"; };
+                  };
+                };
+
+                services.paperless-homelab.enable = true;
+                services.radicale-homelab.enable = true;
+
+                # Stub agenix secrets (paths ficticios — solo eval, no decryption real).
+                age.secrets.postgresPaperlessPass.file = pkgs.writeText "stub" "stub";
+                age.secrets.paperlessSecretKey.file    = pkgs.writeText "stub" "stub";
+                age.secrets.paperlessAdminPass.file    = pkgs.writeText "stub" "stub";
+                age.secrets.radicaleHtpasswd.file      = pkgs.writeText "stub" "stub";
+              })
+            ];
+          };
         };
       };
 
