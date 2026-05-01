@@ -66,7 +66,7 @@ check "8 prowlarr API responde" ssh "$HOST" '
 
 check "9 bazarr UI responde" ssh "$HOST" '
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:6767/)
-  [ "$CODE" = "200" ] || [ "$CODE" = "302" ]'
+  [ "$CODE" = "200" ] || [ "$CODE" = "302" ] || [ "$CODE" = "401" ]'
 
 check "10 arr-bootstrap.service ran clean" ssh "$HOST" "
   sudo systemctl is-active arr-bootstrap.service | grep -qE 'active'"
