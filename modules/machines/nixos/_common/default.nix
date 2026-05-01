@@ -66,7 +66,7 @@
     allowPing = true;
   };
 
-  # === fail2ban local (SSH LAN; fail2ban-cloudflare es Fase B) ===
+  # === fail2ban local (SSH LAN; fail2ban-jails-homelab es Fase B/D.1) ===
   services.fail2ban = {
     enable = true;
     maxretry = 5;

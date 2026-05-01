@@ -42,7 +42,7 @@ smoke-b:
 generations:
 	sudo nix-env --list-generations --profile /nix/var/nix/profiles/system
 
-# Smoke test Fase C.1 — web services + fail2ban-cloudflare
+# Smoke test Fase C.1 — web services + fail2ban-jails (VW jail)
 smoke-c1:
 	bash bin/smoke-test-c1.sh
 
