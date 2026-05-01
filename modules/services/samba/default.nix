@@ -44,9 +44,14 @@ in
           "min protocol"         = "SMB3";
           "map to guest"         = "Never";
           "dns proxy"            = "no";
-          "log file"             = "/var/log/samba/log.%m";
-          "max log size"         = "1000";
-          "logging"              = "file";
+          # D.1: route auth_audit (level 3) to syslog → journald so fail2ban
+          # (backend=systemd, journalmatch=samba-smbd.service) can read failed
+          # auth events. `syslog only=yes` disables file logging entirely;
+          # `syslog=5` sends levels < 5 to syslog info (captures auth_audit:3).
+          "logging"              = "syslog";
+          "log level"            = "1 auth_audit:3";
+          "syslog only"          = "yes";
+          "syslog"               = "5";
           # NO usamos `bind interfaces only` porque Samba rechaza interfaces
           # non-broadcast (tailscale0 es point-to-point /32) — log dice
           # "not adding non-broadcast interface". En su lugar: smbd escucha
