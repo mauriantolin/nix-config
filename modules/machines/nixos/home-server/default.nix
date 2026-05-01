@@ -12,11 +12,10 @@
     ./disko.nix
   ];
 
-  # Fase B — Cloudflare Tunnel. Gated off hasta tener tunnelId + .age con credenciales.
-  # Una vez encryptadas con agenix, flip enable = true y deploy.
+  # Fase B — Cloudflare Tunnel activo. Credenciales en agenix cloudflared-credentials.age.
   services.cloudflared-homelab = {
-    enable = false;
-    tunnelId = "";
+    enable = true;
+    tunnelId = "f97802ac-24f1-4810-8042-3d207292eb78";
     ingress = {
       "whoami.mauricioantolin.com" = "http://127.0.0.1:8080";
     };
