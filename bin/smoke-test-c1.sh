@@ -43,6 +43,17 @@ check "4.3 ban/unban 203.0.113.99 round-trip con CF API"     ssh "$HOST" '
   [ "$HIT" = "1" ]
 '
 
+# 4.4 valida que el FILTER realmente matchea — no solo que el action funciona.
+# Defensa contra silent regressions tipo D.1 (continuation lines mal indentadas
+# en el filter file → solo el primer regex se cargaba, jail funcionalmente roto
+# pero check 4.3 verde porque solo testeaba banip directo).
+check "4.4 VW filter matchea Auth-fail real (regex válido)"  ssh "$HOST" '
+  echo "abr 25 02:00:00 home-server vaultwarden[1]: [2026-04-25 02:00:00.000][vaultwarden::api::identity][ERROR] Username or password is incorrect. Try again. IP: 203.0.113.99. Username: fake@example.com." > /tmp/vw-fake.log
+  HITS=$(sudo fail2ban-regex /tmp/vw-fake.log /etc/fail2ban/filter.d/vaultwarden.conf 2>/dev/null | grep -oP "Failregex: \K[0-9]+")
+  rm -f /tmp/vw-fake.log
+  [ "$HITS" -ge 1 ]
+'
+
 
 # Phase 5 — Uptime Kuma (sólo checks locales; path via TS Serve se valida en Phase 7)
 check "5.1 uptime-kuma.service active"                       ssh "$HOST" "systemctl is-active uptime-kuma | grep -q active"
