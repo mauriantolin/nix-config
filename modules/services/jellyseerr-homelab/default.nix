@@ -50,11 +50,14 @@ in
       openFirewall = false;
     };
 
-    # Loopback bind: módulo NixOS jellyseerr no expone listenAddress.
-    # Workaround: env var HOST que la app lee.
+    # Bind 0.0.0.0 para que sea accesible vía Tailnet (home-server:5055). El
+    # firewall sólo abre el puerto en tailscale0, así que LAN/WAN no lo ven.
+    # Acceso público externo va por CF Tunnel → 127.0.0.1:5055 (loopback igual).
     systemd.services.jellyseerr.environment = {
-      HOST = "127.0.0.1";
+      HOST = "0.0.0.0";
     };
+
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ cfg.port ];
 
     # NOTA: jellyseerr en NixOS 25.11 usa DynamicUser=yes + StateDirectory=jellyseerr.
     # systemd gestiona /var/lib/jellyseerr (symlink → /var/lib/private/jellyseerr) y
