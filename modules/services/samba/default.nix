@@ -47,7 +47,11 @@ in
           "log file"             = "/var/log/samba/log.%m";
           "max log size"         = "1000";
           "logging"              = "file";
-          "interfaces"           = "lo ${cfg.lanInterface} tailscale0";
+          # `tailscale0` es point-to-point sin broadcast — Samba rechaza interfaces
+          # non-broadcast ("not adding non-broadcast interface"). Workaround: listar
+          # el rango CGNAT de Tailscale como IP/netmask en lugar del nombre de iface.
+          # 100.64.0.0/10 cubre todo el espacio Tailscale (RFC 6598).
+          "interfaces"           = "lo ${cfg.lanInterface} 100.64.0.0/10";
           "bind interfaces only" = "yes";
         };
         ${cfg.user} = {
