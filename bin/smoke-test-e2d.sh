@@ -40,8 +40,13 @@ check "6 jellyseerr initialized=true (wizard hecho)" ssh "$HOST" '
   curl -sf http://127.0.0.1:5055/api/v1/settings/public | jq -r .initialized | grep -q true'
 
 check "7 cloudflared sumó requests.* a ingress config" ssh "$HOST" "
-  sudo systemctl status cloudflared --no-pager | grep -q 'requests.mauricioantolin.com' || \
-  sudo cat /etc/cloudflared/config.yml 2>/dev/null | grep -q 'requests.mauricioantolin.com'"
+  # cloudflared NixOS module crea unit cloudflared-tunnel-<UUID>; config en /nix/store.
+  sudo systemctl cat 'cloudflared-tunnel-*.service' 2>/dev/null | \
+    grep -oE 'cloudflared\.yml=[^[:space:]]+' | head -1 | cut -d= -f2 | \
+    xargs -r sudo cat | grep -q 'requests.mauricioantolin.com' || \
+  sudo systemctl show 'cloudflared-tunnel-*.service' -p ExecStart 2>/dev/null | \
+    grep -oE -- '--config=[^ ]+\.yml' | head -1 | cut -d= -f2 | \
+    xargs -r sudo cat | grep -q 'requests.mauricioantolin.com'"
 
 check "8 requests.* via CF Tunnel responde (sin auth bypass debe ser 200/302/401)" bash -c '
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://requests.mauricioantolin.com/api/v1/status 2>/dev/null)
