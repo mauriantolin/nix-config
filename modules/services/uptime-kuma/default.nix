@@ -26,8 +26,28 @@ in
       };
     };
 
-    # Aseguramos ownership del dataset ZFS montado (Phase 2) para el user uptime-kuma
-    # que crea el módulo nixpkgs.
+    # El módulo nixpkgs usa DynamicUser=true + PrivateUsers=true, lo que hace que systemd
+    # intente renombrar /var/lib/uptime-kuma → /var/lib/private/uptime-kuma.
+    # Como /var/lib/uptime-kuma es un dataset ZFS montado, eso falla con "Device or resource busy".
+    # Solución: desactivamos DynamicUser/PrivateUsers y creamos un usuario estático.
+    users.users.uptime-kuma = {
+      isSystemUser = true;
+      group = "uptime-kuma";
+      home = "/var/lib/uptime-kuma";
+    };
+    users.groups.uptime-kuma = {};
+
+    systemd.services.uptime-kuma = {
+      serviceConfig = {
+        DynamicUser = lib.mkForce false;
+        PrivateUsers = lib.mkForce false;
+        StateDirectory = lib.mkForce "";   # dataset ZFS ya montado; no dejar que systemd lo gestione
+        User = "uptime-kuma";
+        Group = "uptime-kuma";
+      };
+    };
+
+    # Aseguramos ownership del dataset ZFS montado (Phase 2) para el user estático uptime-kuma.
     systemd.services.uptime-kuma-data-chown = {
       after = [ "local-fs.target" ];
       before = [ "uptime-kuma.service" ];
