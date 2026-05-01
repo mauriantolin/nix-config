@@ -158,7 +158,7 @@ in
         "bazarr.service"
       ];
       wantedBy = [ "multi-user.target" ];
-      path = with pkgs; [ curl jq libxml2 coreutils ];
+      path = with pkgs; [ curl jq libxml2 coreutils gnused gawk ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
