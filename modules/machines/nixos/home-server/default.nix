@@ -18,6 +18,9 @@
     ../../../services/postgres-shared
     ../../../services/paperless
     ../../../services/radicale
+    # E.3 — observabilidad (prometheus + grafana + exporters)
+    ../../../services/prometheus-homelab
+    ../../../services/grafana-homelab
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -33,12 +36,18 @@
       "rpool/services/paperless"       = { };
       "rpool/services/radicale"        = { };
       "tank/docs"                      = { recordsize = "1M"; };
+      # E.3 — observabilidad
+      "rpool/services/prometheus"      = { };
+      "rpool/services/grafana"         = { };
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
       "var-lib-paperless.mount"
       "var-lib-radicale.mount"
       "srv-docs.mount"
+      # E.3
+      "var-lib-prometheus.mount"
+      "var-lib-grafana.mount"
     ];
   };
 
@@ -119,6 +128,10 @@
     handlers = {
       "/" = { Proxy = "http://127.0.0.1:3000"; };
       "/uptime/" = { Proxy = "http://127.0.0.1:3001"; };
+      # E.3 — Grafana en subpath. serve_from_sub_path=true + root_url cargan
+      # los assets desde /grafana/ correctamente. Si algún plugin asume root=/,
+      # fallback documentado: subhost dedicado (ver spec Q1).
+      "/grafana/" = { Proxy = "http://127.0.0.1:3030"; };
     };
   };
 
@@ -187,6 +200,26 @@
 
   services.radicale-homelab.enable = true;
 
+  # ── E.3 observabilidad ──────────────────────────────────────────────────────
+
+  services.prometheus-homelab = {
+    enable = true;
+    retention = "30d";
+    scrapeTargets = {
+      # paperless expone /metrics? Comentado hasta validar (2.x lo trae detrás
+      # de PAPERLESS_ENABLE_METRICS=true). Activar cuando se confirme con curl.
+      # paperless = { url = "127.0.0.1:8000"; metricsPath = "/metrics"; };
+    };
+    blackboxTargets = [
+      "https://vault.mauricioantolin.com"
+      "https://paperless.mauricioantolin.com"
+      "https://whoami.mauricioantolin.com"
+      "https://cal.mauricioantolin.com"
+    ];
+  };
+
+  services.grafana-homelab.enable = true;
+
   networking = {
     hostName = "home-server";
     hostId = "3834b250";
@@ -224,6 +257,15 @@
   };
   fileSystems."/srv/docs" = {
     device = "tank/docs";
+    fsType = "zfs";
+  };
+  # E.3 — observabilidad
+  fileSystems."/var/lib/prometheus" = {
+    device = "rpool/services/prometheus";
+    fsType = "zfs";
+  };
+  fileSystems."/var/lib/grafana" = {
+    device = "rpool/services/grafana";
     fsType = "zfs";
   };
   # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared

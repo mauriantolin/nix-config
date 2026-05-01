@@ -159,6 +159,18 @@
             mountpoint = "/var/lib/radicale";
             options.mountpoint = "legacy";
           };
+          # E.3 — observabilidad. TSDB en SSD; recordsize default OK
+          # (Prometheus escribe en chunks ~2h, no se beneficia de tuning).
+          "services/prometheus" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/prometheus";
+            options.mountpoint = "legacy";
+          };
+          "services/grafana" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/grafana";
+            options.mountpoint = "legacy";
+          };
         };
       };
 
