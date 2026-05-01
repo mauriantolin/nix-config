@@ -114,7 +114,8 @@ in
           # Escape ' → '' (PostgreSQL string literal escape) por defensa-en-profundidad.
           # En la práctica openssl rand -base64 no genera comillas, pero el escape protege
           # contra futuros generators o passwords manuales.
-          escaped=$(printf '%s' "$raw" | ${pkgs.gnused}/bin/sed "s/'/''/g")
+          # Nix indented-string: ''' renderiza a '' literal en el shell.
+          escaped=$(printf '%s' "$raw" | ${pkgs.gnused}/bin/sed "s/'/'''/g")
           ${pkg}/bin/psql -v ON_ERROR_STOP=1 -tAc \
             "ALTER USER \"${spec.user}\" WITH PASSWORD '$escaped';"
           echo "[OK] password set for role ${spec.user}"

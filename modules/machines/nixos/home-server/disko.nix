@@ -140,6 +140,25 @@
             mountpoint = "/var/lib/homepage";
             options.mountpoint = "legacy";
           };
+          # E.1 — Postgres shared. recordsize=8K matchea PG block size (mejora IOPS).
+          "services/postgres-shared" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/postgresql";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "8K";
+            };
+          };
+          "services/paperless" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/paperless";
+            options.mountpoint = "legacy";
+          };
+          "services/radicale" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/radicale";
+            options.mountpoint = "legacy";
+          };
         };
       };
 
@@ -176,6 +195,16 @@
             type = "zfs_fs";
             mountpoint = "/srv/backups";
             options.mountpoint = "legacy";
+          };
+          # E.1 — bulk storage para Paperless (originales PDF + scans).
+          # recordsize=1M reduce metadata overhead para archivos grandes (>10MB típico de scans).
+          "docs" = {
+            type = "zfs_fs";
+            mountpoint = "/srv/docs";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";
+            };
           };
           "reserved" = {
             type = "zfs_fs";

@@ -54,6 +54,10 @@ smoke-c2:
 smoke-d1:
 	bash bin/smoke-test-d1.sh
 
+# Smoke test Fase E.1 — postgres compartido + paperless + radicale
+smoke-e1:
+	bash bin/smoke-test-e1.sh
+
 # Shortcut diagnóstico fail2ban
 fail2ban-status:
 	ssh mauri@home-server 'sudo fail2ban-client status'
