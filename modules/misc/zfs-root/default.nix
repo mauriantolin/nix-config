@@ -2,6 +2,9 @@
 {
   boot.supportedFilesystems = [ "zfs" ];
   boot.zfs.forceImportRoot = false;
+  # Pin kernel al último compatible con el ZFS empaquetado: evita
+  # "Package zfs-kernel-X is marked as broken" cuando nixpkgs adelanta el kernel default.
+  boot.kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
   # hostId requerido por ZFS; debe ser único y estable por host.
   # Generado con: head -c4 /dev/urandom | od -A n -t x1 | tr -d ' '
   # Valor concreto se setea en el módulo del host, no acá (compartible entre hosts = catástrofe).
