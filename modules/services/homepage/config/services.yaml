@@ -27,13 +27,21 @@
         icon: jellyfin.png
         href: https://home-server.tailee5654.ts.net:8196/
         description: Streaming media — SSO via plugin
-        # Widget pendiente: requiere API key de Jellyfin. Generar en:
-        # Dashboard → Advanced → API Keys → "+", encrypt al .age, sumar.
+        widget:
+          type: jellyfin
+          url: http://127.0.0.1:8096
+          key: "{{HOMEPAGE_VAR_JELLYFIN_KEY}}"
+          enableNowPlaying: true
+          enableUser: false
+          enableBlocks: true
     - Jellyseerr:
         icon: jellyseerr.png
         href: https://requests.mauricioantolin.com
         description: Pedir series / movies — auth Jellyfin
-        # Widget pendiente: requiere API key (Settings → General → API Key).
+        widget:
+          type: jellyseerr
+          url: http://127.0.0.1:5055
+          key: "{{HOMEPAGE_VAR_JELLYSEERR_KEY}}"
     - Sonarr:
         icon: sonarr.png
         href: https://sonarr.mauricioantolin.com

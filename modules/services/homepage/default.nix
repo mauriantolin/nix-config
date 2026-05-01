@@ -48,6 +48,16 @@ in
         default = "deluge";
         description = "Password WebUI Deluge (default 'deluge'; cambiar si se rota).";
       };
+      jellyfinApiKeyPath = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "Path al .age con API key de Jellyfin (Dashboard → API Keys).";
+      };
+      jellyseerrApiKeyPath = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "Path al .age con API key de Jellyseerr (Settings → General → API Key).";
+      };
     };
   };
 
@@ -159,7 +169,11 @@ in
             (lib.optional (cfg.secretsBootstrap.paperlessAdminPassPath != null)
               "paperless-pass:${toString cfg.secretsBootstrap.paperlessAdminPassPath}")
             ++ (lib.optional (cfg.secretsBootstrap.grafanaAdminPassPath != null)
-              "grafana-pass:${toString cfg.secretsBootstrap.grafanaAdminPassPath}");
+              "grafana-pass:${toString cfg.secretsBootstrap.grafanaAdminPassPath}")
+            ++ (lib.optional (cfg.secretsBootstrap.jellyfinApiKeyPath != null)
+              "jellyfin-key:${toString cfg.secretsBootstrap.jellyfinApiKeyPath}")
+            ++ (lib.optional (cfg.secretsBootstrap.jellyseerrApiKeyPath != null)
+              "jellyseerr-key:${toString cfg.secretsBootstrap.jellyseerrApiKeyPath}");
         };
         script = ''
           set -uo pipefail
@@ -202,6 +216,16 @@ in
             GRAFANA_PASS=$(cat "$CREDENTIALS_DIRECTORY/grafana-pass")
           fi
 
+          JELLYFIN_KEY=""
+          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/jellyfin-key" ]; then
+            JELLYFIN_KEY=$(cat "$CREDENTIALS_DIRECTORY/jellyfin-key")
+          fi
+
+          JELLYSEERR_KEY=""
+          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/jellyseerr-key" ]; then
+            JELLYSEERR_KEY=$(cat "$CREDENTIALS_DIRECTORY/jellyseerr-key")
+          fi
+
           NEW=$(mktemp -p /run/homepage-secrets .env.XXXXXX)
           chmod 0400 "$NEW"
           cat > "$NEW" <<EOF
@@ -212,6 +236,8 @@ in
           HOMEPAGE_VAR_PAPERLESS_TOKEN=$PAPERLESS_TOKEN
           HOMEPAGE_VAR_GRAFANA_PASS=$GRAFANA_PASS
           HOMEPAGE_VAR_DELUGE_PASS=${cfg.secretsBootstrap.delugeWebUiPassword}
+          HOMEPAGE_VAR_JELLYFIN_KEY=$JELLYFIN_KEY
+          HOMEPAGE_VAR_JELLYSEERR_KEY=$JELLYSEERR_KEY
           EOF
 
           OUT=/run/homepage-secrets/env

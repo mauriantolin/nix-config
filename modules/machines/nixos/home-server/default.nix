@@ -192,6 +192,8 @@
       enable = true;
       paperlessAdminPassPath = config.age.secrets.paperlessAdminPass.path;
       grafanaAdminPassPath   = config.age.secrets.grafanaAdminPass.path;
+      jellyfinApiKeyPath     = config.age.secrets.jellyfinApiKey.path;
+      jellyseerrApiKeyPath   = config.age.secrets.jellyseerrApiKey.path;
     };
   };
 
@@ -280,6 +282,12 @@
 
   # Postgres user passwords — agenix decryption only (no service-level owner;
   # postgres-set-passwords corre como user `postgres` y lee via LoadCredential).
+  # Phase 8 — Jellyfin/Jellyseerr API keys consumidos por homepage-secrets-bootstrap
+  # via LoadCredential. Sólo lectura por root (decryption time); el oneshot los
+  # transcribe a /run/homepage-secrets/env (0400 root) que podman lee al startup.
+  age.secrets.jellyfinApiKey.file   = "${inputs.secrets}/secrets/jellyfin-api-key.age";
+  age.secrets.jellyseerrApiKey.file = "${inputs.secrets}/secrets/jellyseerr-api-key.age";
+
   age.secrets.postgresPaperlessPass.file = "${inputs.secrets}/secrets/postgres-paperless-pass.age";
   age.secrets.postgresGrafanaPass.file   = "${inputs.secrets}/secrets/postgres-grafana-pass.age";
   age.secrets.postgresNextcloudPass.file = "${inputs.secrets}/secrets/postgres-nextcloud-pass.age";
