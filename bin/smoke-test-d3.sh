@@ -42,7 +42,7 @@ check "5 /var/lib/keycloak está montado (zfs)" ssh "$HOST" "
 
 check "6 keycloakZfsKey decryptado por agenix (32 bytes)" ssh "$HOST" "
   sudo test -s /run/agenix/keycloakZfsKey && \
-  [ \$(sudo wc -c < /run/agenix/keycloakZfsKey) -eq 32 ]"
+  [ \$(sudo sh -c 'wc -c < /run/agenix/keycloakZfsKey') -eq 32 ]"
 
 check "7 keycloak-db-pass + keycloak-admin-pass disponibles" ssh "$HOST" "
   sudo test -s /run/agenix/keycloak-db-pass && \
@@ -62,9 +62,17 @@ check "9 user keycloak puede autenticar contra su DB" ssh "$HOST" "
 check "10 keycloak.service active (running)" ssh "$HOST" "
   sudo systemctl is-active keycloak.service | grep -q '^active$'"
 
-check "11 keycloak escucha 127.0.0.1:8180 (no LAN/WAN)" ssh "$HOST" "
-  sudo ss -tnlp | grep -q '127.0.0.1:8180' && \
-  ! sudo ss -tnlp | grep -E ':8180' | grep -qv '127.0.0.1'"
+check "11 keycloak escucha loopback only en :8180 (no LAN/WAN)" ssh "$HOST" '
+  # KC bind muestra como [::ffff:127.0.0.1]:8180 (IPv4-mapped v6) o 127.0.0.1:8180.
+  # Validamos que TODOS los listeners en :8180 sean loopback.
+  ALL=$(sudo ss -tnlH | awk "{print \$4}" | grep ":8180\$")
+  [ -n "$ALL" ] || exit 1
+  while IFS= read -r addr; do
+    case "$addr" in
+      127.0.0.1:8180|*ffff:127.0.0.1*:8180|"[::1]:8180"|"::1:8180") ;;
+      *) exit 1 ;;
+    esac
+  done <<< "$ALL"'
 
 check "12 /health/ready devuelve UP (management port :9000)" ssh "$HOST" "
   curl -sf -m 10 http://127.0.0.1:9000/health/ready | grep -q '\"status\": \"UP\"'"
@@ -114,12 +122,13 @@ check "19 auth.mauricioantolin.com vía CF Tunnel responde" bash -c '
   # Esperado 200 (Keycloak es ingress público sin CF Access).
   [ "$CODE" = "200" ]'
 
-check "20 hostname-strict: Host header LAN no aceptado (rechaza :8180 sin host válido)" ssh "$HOST" "
-  CODE=\$(curl -s -o /dev/null -w '%{http_code}' \
-    -H 'Host: home-server.local' \
-    http://127.0.0.1:8180/admin/master/console/)
-  # Con hostname-strict=true, requests con Host distinto a auth.* devuelven 404/400.
-  [ \"\$CODE\" != '200' ]"
+check "20 issuer URL canónico = https://auth.* (sin port :8180, sin http://)" ssh "$HOST" "
+  # KC 26 hostname-strict no rechaza por Host header — solo fuerza el URL canónico.
+  # Validamos que el .well-known/openid-configuration apunte al URL público correcto
+  # (https + sin port). Si esto falla, los OIDC clients tratarían de hacer token
+  # exchange contra http://...:8180, que no es alcanzable desde el browser.
+  ISS=\$(curl -sf http://127.0.0.1:8180/realms/homelab/.well-known/openid-configuration | jq -r .issuer)
+  [ \"\$ISS\" = 'https://auth.mauricioantolin.com/realms/homelab' ]"
 
 echo
 if [ "$FAIL" -eq 0 ]; then

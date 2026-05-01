@@ -165,7 +165,11 @@ in
       };
 
       settings = {
-        hostname = cfg.hostname;
+        # `hostname` = URL público canónico (incluyendo scheme). KC lo usa para todos
+        # los issuer URLs, redirect URIs, etc. Sin el "https://" prefix, KC arma URLs
+        # con scheme=http + port=8180 (porque http-enabled=true) — eso rompe los
+        # clients OIDC que esperan HTTPS:443 detrás de CF Tunnel.
+        hostname = "https://${cfg.hostname}";
         hostname-strict = true;
         # Keycloak 26 removió `proxy = "edge"`. Replacement oficial:
         # `proxy-headers = "xforwarded"` para que confíe en X-Forwarded-Proto/Host/For
