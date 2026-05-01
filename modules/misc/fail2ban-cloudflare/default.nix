@@ -91,10 +91,10 @@ in
 
   config = lib.mkIf cfg.enable {
     age.secrets.cloudflareApiToken = {
-      file  = "${secretsRoot}/cloudflare-api-token.age";
-      owner = "fail2ban";
-      group = "fail2ban";
-      mode  = "0400";
+      file = "${secretsRoot}/cloudflare-api-token.age";
+      # fail2ban runs as root on NixOS (no dedicated fail2ban user exists).
+      # Root-owned 0400 is correct; the action script runs under fail2ban's root context.
+      mode = "0400";
     };
 
     environment.etc."fail2ban/action.d/cloudflare-homelab.conf".text = actionConf;
