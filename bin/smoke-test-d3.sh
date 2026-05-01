@@ -83,10 +83,10 @@ check "14 bootstrap log: 'DONE' al final" ssh "$HOST" "
 check "15 realm 'homelab' accesible" ssh "$HOST" "
   curl -sf -m 10 http://127.0.0.1:8180/realms/homelab/.well-known/openid-configuration | jq -e '.issuer' | grep -q 'realms/homelab'"
 
-check "16 admin login con pass real (master realm)" ssh "$HOST" "
+check "16 admin login con pass real (master realm, user='admin')" ssh "$HOST" "
   pass=\$(sudo cat /run/agenix/keycloak-admin-pass)
   curl -sf -X POST 'http://127.0.0.1:8180/realms/master/protocol/openid-connect/token' \
-    -d 'username=mauri' --data-urlencode \"password=\$pass\" \
+    -d 'username=admin' --data-urlencode \"password=\$pass\" \
     -d 'grant_type=password&client_id=admin-cli' | jq -e .access_token >/dev/null"
 
 check "17 placeholder admin pass YA NO sirve (rotated)" ssh "$HOST" "
@@ -100,7 +100,7 @@ check "17 placeholder admin pass YA NO sirve (rotated)" ssh "$HOST" "
 check "18 13 OIDC clients presentes en realm 'homelab'" ssh "$HOST" "
   pass=\$(sudo cat /run/agenix/keycloak-admin-pass)
   TOKEN=\$(curl -sf -X POST 'http://127.0.0.1:8180/realms/master/protocol/openid-connect/token' \
-    -d 'username=mauri' --data-urlencode \"password=\$pass\" \
+    -d 'username=admin' --data-urlencode \"password=\$pass\" \
     -d 'grant_type=password&client_id=admin-cli' | jq -r .access_token)
   COUNT=\$(curl -sf -H \"Authorization: Bearer \$TOKEN\" \
     'http://127.0.0.1:8180/admin/realms/homelab/clients' | jq '[.[] | select(.clientId | test(\"^(vaultwarden|paperless|grafana|jellyfin|jellyseerr|oauth2proxy-)\"))] | length')

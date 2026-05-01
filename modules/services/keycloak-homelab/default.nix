@@ -55,7 +55,11 @@ in
     adminUser = lib.mkOption {
       type = lib.types.str;
       default = "mauri";
-      description = "Username del admin de master realm tras bootstrap.";
+      description = ''
+        Username del admin en el realm `homelab` (NO master). Se usa para
+        identificarse en los servicios SSO. El admin del master realm es
+        siempre `admin` (KC 26 crea un temporary admin con username readOnly).
+      '';
     };
 
     smtp = {
@@ -258,6 +262,12 @@ in
         done
 
         ADMIN_PASS=$(cat "$CREDENTIALS_DIRECTORY/admin-pass")
+        # KC 26 crea un "temporary admin" en master realm con username=admin y
+        # `username` marcado como readOnly — no se puede renombrar via API.
+        # Convención homelab: master admin queda como `admin` (consola Keycloak),
+        # ADMIN_USER (cfg.adminUser, default "mauri") se usa SOLO en realm `homelab`
+        # como el user para SSO en servicios.
+        MASTER_USER="admin"
         get_token() {
           local user="$1" pass="$2"
           curl -sf -X POST "$KC_URL/realms/master/protocol/openid-connect/token" \
@@ -266,27 +276,21 @@ in
         }
 
         # 2. Detectá si el placeholder pass aún es válido (primera corrida)
-        TOKEN=$(get_token admin "$ADMIN_PLACEHOLDER" 2>/dev/null || true)
+        TOKEN=$(get_token "$MASTER_USER" "$ADMIN_PLACEHOLDER" 2>/dev/null || true)
         if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
           echo "[bootstrap] placeholder pass válido — rotando admin password"
           USER_ID=$(curl -sf -H "Authorization: Bearer $TOKEN" \
-            "$KC_URL/admin/realms/master/users?username=admin&exact=true" | jq -r '.[0].id')
+            "$KC_URL/admin/realms/master/users?username=$MASTER_USER&exact=true" | jq -r '.[0].id')
           curl -sf -X PUT "$KC_URL/admin/realms/master/users/$USER_ID/reset-password" \
             -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
             -d "$(jq -n --arg pass "$ADMIN_PASS" \
                 '{type:"password", value:$pass, temporary:false}')"
-          # Rename admin → cfg.adminUser
-          if [ "$ADMIN_USER" != "admin" ]; then
-            curl -sf -X PUT "$KC_URL/admin/realms/master/users/$USER_ID" \
-              -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-              -d "$(jq -n --arg u "$ADMIN_USER" '{username:$u}')"
-            echo "[bootstrap] admin renombrado a '$ADMIN_USER'"
-          fi
-          # Re-token con la nueva pass + nuevo username
-          TOKEN=$(get_token "$ADMIN_USER" "$ADMIN_PASS")
+          # Re-token con la nueva pass (mismo username, KC 26 no permite rename
+          # del temporary admin).
+          TOKEN=$(get_token "$MASTER_USER" "$ADMIN_PASS")
         else
           echo "[bootstrap] placeholder ya rotado, login con admin real"
-          TOKEN=$(get_token "$ADMIN_USER" "$ADMIN_PASS")
+          TOKEN=$(get_token "$MASTER_USER" "$ADMIN_PASS")
         fi
 
         if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
