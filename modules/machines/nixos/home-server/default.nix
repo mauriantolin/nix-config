@@ -9,6 +9,7 @@
     ../../../misc/fail2ban-cloudflare
     ../../../services/whoami
     ../../../services/vaultwarden
+    ../../../services/uptime-kuma
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -38,6 +39,8 @@
     blockMode = "block";
     enableVaultwardenJail = true;
   };
+
+  services.uptime-kuma-homelab.enable = true;
 
   networking = {
     hostName = "home-server";
