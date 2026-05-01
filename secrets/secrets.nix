@@ -67,4 +67,9 @@ in
   "radarr-localadmin-pass.age".publicKeys = users ++ systems;
   "prowlarr-localadmin-pass.age".publicKeys = users ++ systems;
   "bazarr-localadmin-pass.age".publicKeys = users ++ systems;
+
+  # R0 — Vaultwarden auto-sync helper credentials
+  "bw-api-clientid.age".publicKeys = users ++ systems;
+  "bw-api-clientsecret.age".publicKeys = users ++ systems;
+  "bw-mauri-master.age".publicKeys = users ++ systems;
 }
