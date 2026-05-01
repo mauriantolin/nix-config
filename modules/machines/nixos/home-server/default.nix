@@ -326,7 +326,27 @@
       "https://paperless.mauricioantolin.com"
       "https://whoami.mauricioantolin.com"
       "https://cal.mauricioantolin.com"
+      # Phase 7c — D.4b hostnames públicos (CF Tunnel → oauth2-proxy → backend).
+      # Sin sesión, oauth2-proxy responde 302 → Keycloak: blackbox http_2xx
+      # acepta 200/302/401/403 como UP (ver módulo).
+      "https://sonarr.mauricioantolin.com"
+      "https://radarr.mauricioantolin.com"
+      "https://prowlarr.mauricioantolin.com"
+      "https://bazarr.mauricioantolin.com"
+      "https://home.mauricioantolin.com"
+      "https://uptime.mauricioantolin.com"
+      # Auth foundation — si KC cae, todo D.4a/b cae.
+      "https://auth.mauricioantolin.com"
     ];
+    # Phase 7c — Alertmanager email vía Workspace SMTP relay (mismo App Password
+    # que Keycloak; reuso el .age para no proliferar secrets).
+    alertmanager = {
+      enable = true;
+      smtpUsername = "admin@mauricioantolin.com";
+      smtpFrom     = "auth@mauricioantolin.com";   # alias Send-As ya configurado
+      smtpTo       = "suscripciones@mauricioantolin.com";
+      passwordFile = "${inputs.secrets}/secrets/keycloak-smtp-pass.age";
+    };
   };
 
   services.grafana-homelab = {
