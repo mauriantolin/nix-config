@@ -9,6 +9,8 @@
     ../../../misc/fail2ban-jails
     ../../../misc/tailscale-serve
     ../../../misc/zfs-services-bootstrap
+    # Phase 7a — sanoid local snapshot policy (3 tiers: critical/standard/media)
+    ../../../misc/sanoid-homelab
     ../../../services/whoami
     ../../../services/vaultwarden
     ../../../services/uptime-kuma
