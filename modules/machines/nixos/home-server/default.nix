@@ -5,10 +5,22 @@
     ../../../misc/zfs-root
     ../../../misc/tailscale
     ../../../misc/agenix
+    ../../../misc/cloudflared
+    ../../../services/whoami
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
   ];
+
+  # Fase B — Cloudflare Tunnel. Gated off hasta tener tunnelId + .age con credenciales.
+  # Una vez encryptadas con agenix, flip enable = true y deploy.
+  services.cloudflared-homelab = {
+    enable = false;
+    tunnelId = "";
+    ingress = {
+      "whoami.mauricioantolin.com" = "http://127.0.0.1:8080";
+    };
+  };
 
   networking = {
     hostName = "home-server";
