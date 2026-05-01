@@ -51,6 +51,18 @@
       findTime = "10m";
       banTime = "4h";
     };
+    jails.samba = {
+      service = "samba-smbd";
+      backend = "nftables";
+      failregex = ''
+        ^.*Auth:.*status \[NT_STATUS_(WRONG_PASSWORD|NO_SUCH_USER|LOGON_FAILURE)\].*remote host \[ipv4:<HOST>:[0-9]+\].*$
+        ^.*Auth:.*status \[NT_STATUS_(WRONG_PASSWORD|NO_SUCH_USER|LOGON_FAILURE)\].*remote host \[ipv6:<HOST>:[0-9]+\].*$
+      '';
+      ignoreIp = [ "127.0.0.1/8" "::1" "100.64.0.0/10" ];
+      maxRetry = 5;
+      findTime = "10m";
+      banTime = "1h";
+    };
   };
 
   services.uptime-kuma-homelab.enable = true;
