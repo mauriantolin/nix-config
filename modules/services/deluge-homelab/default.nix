@@ -180,14 +180,15 @@ in
 
         # ── /var/lib/deluge/.config/deluge/web.conf: web UI password (sha1+salt).
         # Sin esto, web UI usa default "deluge" → *arr no se puede conectar.
-        # Idempotente: solo si web.conf no existe (primer deploy). Si existe, respetar.
+        # Marcador `.web-pwd-managed` evita re-renderizar (cada render genera salt
+        # nuevo y obligaría restart). Si querés rotar password: rm el marker + restart.
         WEB_CONF=/var/lib/deluge/.config/deluge/web.conf
-        if [ ! -f "$WEB_CONF" ]; then
+        MARKER=/var/lib/deluge/.config/deluge/.web-pwd-managed
+        if [ ! -f "$MARKER" ]; then
           SALT=$(openssl rand -hex 32)
           PWD_SHA1=$(printf '%s%s' "$SALT" "$pass" | openssl sha1 | awk '{print $2}')
-          # Format: dos JSON objects consecutivos (file/format header + content).
-          # Default web port=8112; pwd_sha1+pwd_salt es lo que valida login.
           install -m 0600 -o deluge -g media /dev/null "$WEB_CONF"
+          # Format Deluge: dos JSON objects (file/format header + content).
           cat > "$WEB_CONF" <<JSON
 {
     "file": 2,
@@ -204,12 +205,20 @@ in
     "sidebar_multiple_filters": true,
     "language": "",
     "theme": "gray",
-    "first_login": false
+    "first_login": false,
+    "https": false,
+    "interface": "0.0.0.0",
+    "port": 8112,
+    "base": "/"
 }
 JSON
           chown deluge:media "$WEB_CONF"
           chmod 0600 "$WEB_CONF"
+          install -m 0600 -o deluge -g media /dev/null "$MARKER"
           echo "[deluge-auth-prepare] web.conf renderizado con password de agenix"
+          # Forzar restart de delugeweb si ya estaba running con default password.
+          # --no-block evita deadlock si delugeweb está pidiendo nuestro propio start.
+          /run/current-system/sw/bin/systemctl --no-block try-restart delugeweb || true
         fi
       '';
     };
