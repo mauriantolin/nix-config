@@ -1,0 +1,288 @@
+{
+  "realm": "homelab",
+  "displayName": "Homelab SSO",
+  "displayNameHtml": "<b>Homelab</b> SSO",
+  "enabled": true,
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": false,
+  "rememberMe": true,
+  "ssoSessionIdleTimeout": 2592000,
+  "ssoSessionMaxLifespan": 7776000,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "offlineSessionIdleTimeout": 2592000,
+  "actionTokenGeneratedByUserLifespan": 1800,
+  "actionTokenGeneratedByAdminLifespan": 86400,
+  "loginTheme": "keycloak",
+  "accountTheme": "keycloak.v3",
+  "adminTheme": "keycloak.v2",
+  "emailTheme": "keycloak",
+  "internationalizationEnabled": false,
+  "supportedLocales": [],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "passwordPolicy": "length(12) and notUsername and notEmail",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "webAuthnPolicyRpEntityName": "homelab",
+  "webAuthnPolicySignatureAlgorithms": ["ES256", "RS256"],
+  "webAuthnPolicyRpId": "auth.mauricioantolin.com",
+  "webAuthnPolicyAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyRequireResidentKey": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "not specified",
+  "webAuthnPolicyCreateTimeout": 0,
+  "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+  "smtpServer": {
+    "host": "smtp-relay.gmail.com",
+    "port": "587",
+    "from": "REPLACE_AT_BOOTSTRAP",
+    "fromDisplayName": "Homelab Auth",
+    "auth": "true",
+    "user": "REPLACE_AT_BOOTSTRAP",
+    "password": "REPLACE_AT_BOOTSTRAP",
+    "starttls": "true",
+    "ssl": "false"
+  },
+  "roles": {
+    "realm": [
+      { "name": "homelab:admin", "description": "Full admin de servicios homelab", "composite": false },
+      { "name": "homelab:family", "description": "User regular (lectura+escritura en su scope)", "composite": false },
+      { "name": "homelab:guest", "description": "Read-only / acceso limitado", "composite": false }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-homelab",
+    "composite": true,
+    "clientRole": false,
+    "containerId": "homelab"
+  },
+  "users": [
+    {
+      "username": "REPLACE_AT_BOOTSTRAP",
+      "email": "REPLACE_AT_BOOTSTRAP",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Mauricio",
+      "lastName": "Antolin",
+      "realmRoles": ["homelab:admin", "homelab:family", "default-roles-homelab"],
+      "groups": []
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "vaultwarden",
+      "name": "Vaultwarden",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_vaultwarden",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "https://vault.mauricioantolin.com",
+      "redirectUris": [
+        "https://vault.mauricioantolin.com/identity/connect/oidc-signin",
+        "https://vault.mauricioantolin.com/identity/connect/oidc-signin*"
+      ],
+      "webOrigins": ["https://vault.mauricioantolin.com"],
+      "attributes": {
+        "post.logout.redirect.uris": "https://vault.mauricioantolin.com/*"
+      }
+    },
+    {
+      "clientId": "paperless",
+      "name": "Paperless-ngx",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_paperless",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "https://paperless.mauricioantolin.com",
+      "redirectUris": [
+        "https://paperless.mauricioantolin.com/accounts/oidc/keycloak/login/callback/"
+      ],
+      "webOrigins": ["https://paperless.mauricioantolin.com"]
+    },
+    {
+      "clientId": "grafana",
+      "name": "Grafana",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_grafana",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "https://grafana.mauricioantolin.com",
+      "redirectUris": [
+        "https://grafana.mauricioantolin.com/login/generic_oauth",
+        "https://home-server.tailee5654.ts.net:3443/login/generic_oauth"
+      ],
+      "webOrigins": ["https://grafana.mauricioantolin.com", "https://home-server.tailee5654.ts.net:3443"]
+    },
+    {
+      "clientId": "jellyfin",
+      "name": "Jellyfin",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_jellyfin",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:8196/sso/OID/redirect/keycloak",
+        "https://home-server.tailee5654.ts.net:8196/sso/OID/r/keycloak"
+      ],
+      "webOrigins": ["https://home-server.tailee5654.ts.net:8196"]
+    },
+    {
+      "clientId": "jellyseerr",
+      "name": "Jellyseerr",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_jellyseerr",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "https://requests.mauricioantolin.com",
+      "redirectUris": [
+        "https://requests.mauricioantolin.com/oidc/callback"
+      ],
+      "webOrigins": ["https://requests.mauricioantolin.com"]
+    },
+    {
+      "clientId": "oauth2proxy-sonarr",
+      "name": "oauth2-proxy: Sonarr",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-sonarr",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:9089/oauth2/callback",
+        "https://sonarr.mauricioantolin.com/oauth2/callback"
+      ]
+    },
+    {
+      "clientId": "oauth2proxy-radarr",
+      "name": "oauth2-proxy: Radarr",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-radarr",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:7978/oauth2/callback",
+        "https://radarr.mauricioantolin.com/oauth2/callback"
+      ]
+    },
+    {
+      "clientId": "oauth2proxy-prowlarr",
+      "name": "oauth2-proxy: Prowlarr",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-prowlarr",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:9796/oauth2/callback",
+        "https://prowlarr.mauricioantolin.com/oauth2/callback"
+      ]
+    },
+    {
+      "clientId": "oauth2proxy-bazarr",
+      "name": "oauth2-proxy: Bazarr",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-bazarr",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:6867/oauth2/callback",
+        "https://bazarr.mauricioantolin.com/oauth2/callback"
+      ]
+    },
+    {
+      "clientId": "oauth2proxy-deluge",
+      "name": "oauth2-proxy: Deluge",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-deluge",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:8212/oauth2/callback"
+      ]
+    },
+    {
+      "clientId": "oauth2proxy-homepage",
+      "name": "oauth2-proxy: Homepage",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-homepage",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net/oauth2/callback",
+        "https://home.mauricioantolin.com/oauth2/callback"
+      ]
+    },
+    {
+      "clientId": "oauth2proxy-kuma",
+      "name": "oauth2-proxy: Uptime Kuma",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-kuma",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:8443/oauth2/callback",
+        "https://uptime.mauricioantolin.com/oauth2/callback"
+      ]
+    },
+    {
+      "clientId": "oauth2proxy-prometheus",
+      "name": "oauth2-proxy: Prometheus",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "REPLACE_SECRET_oauth2proxy-prometheus",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://home-server.tailee5654.ts.net:9443/oauth2/callback"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "openid",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" }
+    }
+  ],
+  "defaultDefaultClientScopes": ["role_list", "profile", "email", "roles", "web-origins"],
+  "defaultOptionalClientScopes": ["offline_access", "address", "phone", "microprofile-jwt"]
+}
