@@ -1,0 +1,9 @@
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: long
+      hourCycle: h23
+- search:
+    provider: duckduckgo
+    target: _blank
