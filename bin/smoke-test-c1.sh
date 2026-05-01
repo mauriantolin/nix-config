@@ -29,6 +29,20 @@ check "3.3 /alive responde via CF tunnel"                    curl -fsS "https://
 check "3.4 admin token montado owner vaultwarden"            ssh "$HOST" "sudo test -s /run/agenix/vaultwardenAdminToken"
 check "3.5 signups cerrados (/api/accounts/register 4xx)"    bash -c 'CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "https://vault.'"$ZONE"'/api/accounts/register" -H "Content-Type: application/json" -d "{}"); [ "$CODE" -ge 400 ]'
 
+
+# Phase 4 — fail2ban-cloudflare
+check "4.1 fail2ban jail vaultwarden activo"                 ssh "$HOST" "sudo fail2ban-client status vaultwarden >/dev/null"
+check "4.2 action cloudflare-homelab declarada"              ssh "$HOST" "sudo test -f /etc/fail2ban/action.d/cloudflare-homelab.conf"
+check "4.3 ban/unban 203.0.113.99 round-trip con CF API"     ssh "$HOST" '
+  sudo fail2ban-client set vaultwarden banip 203.0.113.99 >/dev/null 2>&1
+  sleep 3
+  TOKEN=$(sudo cat /run/agenix/cloudflareApiToken)
+  ZID=$(sudo curl -sS -H "Authorization: Bearer $TOKEN" "https://api.cloudflare.com/client/v4/zones?name=mauricioantolin.com" | jq -r ".result[0].id")
+  HIT=$(sudo curl -sS -H "Authorization: Bearer $TOKEN" "https://api.cloudflare.com/client/v4/zones/$ZID/firewall/access_rules/rules?configuration.value=203.0.113.99" | jq ".result | length")
+  sudo fail2ban-client set vaultwarden unbanip 203.0.113.99 >/dev/null 2>&1
+  [ "$HIT" = "1" ]
+'
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "✓ Fase C.1 verde"
