@@ -1,10 +1,17 @@
-- Homelab:
+- Repos:
     - Nix Config:
         - abbr: NC
           href: https://github.com/mauriantolin/nix-config
+
+- Cloud admin:
     - Cloudflare:
         - abbr: CF
           href: https://dash.cloudflare.com
     - Tailscale:
         - abbr: TS
           href: https://login.tailscale.com/admin
+
+- SSO admin:
+    - KC realm homelab:
+        - abbr: KC
+          href: https://auth.mauricioantolin.com/admin/master/console/#/homelab

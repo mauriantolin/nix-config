@@ -1,15 +1,72 @@
-- Infra:
+- Auth:
+    - Keycloak:
+        icon: keycloak.png
+        href: https://auth.mauricioantolin.com/admin/master/console/
+        description: Realm homelab — admin SSO (KC 26)
     - Vaultwarden:
         icon: bitwarden.png
         href: https://vault.mauricioantolin.com
-        description: Password manager (Bitwarden fork)
+        description: Password manager (Bitwarden fork) — login con SSO
+
+- Productivity:
+    - Paperless-ngx:
+        icon: paperless-ngx.png
+        href: https://paperless.mauricioantolin.com
+        description: DMS / OCR — drop PDFs en \\home-server\paperless-consume
+    - Radicale:
+        icon: radicale.png
+        href: https://cal.mauricioantolin.com
+        description: CalDAV / CardDAV — auth htpasswd (sin SSO)
+
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://home-server.tailee5654.ts.net:8196/
+        description: Streaming media — SSO via plugin
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://requests.mauricioantolin.com
+        description: Pedir series / movies — auth Jellyfin
+    - Sonarr:
+        icon: sonarr.png
+        href: https://sonarr.mauricioantolin.com
+        description: TV automation — SSO oauth2-proxy
+    - Radarr:
+        icon: radarr.png
+        href: https://radarr.mauricioantolin.com
+        description: Movies automation — SSO oauth2-proxy
+    - Bazarr:
+        icon: bazarr.png
+        href: https://bazarr.mauricioantolin.com
+        description: Subtítulos — SSO oauth2-proxy
+    - Prowlarr:
+        icon: prowlarr.png
+        href: https://prowlarr.mauricioantolin.com
+        description: Indexer aggregator — SSO oauth2-proxy
+    - Deluge:
+        icon: deluge.png
+        href: https://home-server.tailee5654.ts.net:8212/
+        description: Bittorrent client — SSO oauth2-proxy (tailnet only)
+
+- Observability:
+    - Grafana:
+        icon: grafana.png
+        href: https://home-server.tailee5654.ts.net:3443/
+        description: Dashboards (Homelab / ZFS / SSO) — SSO nativo
+    - Prometheus:
+        icon: prometheus.png
+        href: https://home-server.tailee5654.ts.net:9443/
+        description: Metrics + alert rules — SSO oauth2-proxy
     - Uptime Kuma:
         icon: uptime-kuma.png
-        href: https://home-server.tailee5654.ts.net:8443/
-        description: Uptime monitoring
+        href: https://uptime.mauricioantolin.com
+        description: Uptime status checks
         widget:
           type: uptimekuma
-          # Desde el container de Homepage, `127.0.0.1` es el container mismo. Para alcanzar
-          # Kuma que corre en el host, usamos el bridge podman via host.containers.internal.
+          # Desde el container Homepage, 127.0.0.1 es el container mismo. Para
+          # alcanzar Kuma en el host usamos host.containers.internal vía bridge podman.
           url: http://host.containers.internal:3001
           slug: homelab
+    - Alertmanager:
+        icon: alertmanager.png
+        description: Email a suscripciones@ — sin UI pública (loopback :9093)

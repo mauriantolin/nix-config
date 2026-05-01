@@ -1,9 +1,18 @@
 title: home-server
 theme: dark
 color: slate
-layout:
-  Infra:
-    style: row
-    columns: 2
 headerStyle: clean
 hideVersion: true
+layout:
+  Auth:
+    style: row
+    columns: 2
+  Productivity:
+    style: row
+    columns: 2
+  Media:
+    style: row
+    columns: 4
+  Observability:
+    style: row
+    columns: 4
