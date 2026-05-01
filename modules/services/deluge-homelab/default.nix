@@ -154,7 +154,7 @@ in
       requires = [ "deluge-storage-prepare.service" ];
       before = [ "deluged.service" "delugeweb.service" ];
       wantedBy = [ "deluged.service" "delugeweb.service" ];
-      path = with pkgs; [ coreutils openssl ];
+      path = with pkgs; [ coreutils openssl gawk ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
