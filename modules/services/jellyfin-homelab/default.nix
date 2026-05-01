@@ -308,13 +308,19 @@ in
           ${pkgs.coreutils}/bin/chown -R jellyfin:media ${targetDir}
           ${pkgs.coreutils}/bin/chmod -R u+rwX,g+rX,o-rwx ${targetDir}
 
-          # Update marker; trigger jellyfin restart si la version cambió
-          # (jellyfin solo rescanea plugins al startup).
+          # Update marker; jellyfin solo rescanea plugins al startup. NO
+          # llamamos systemctl try-restart aquí porque este unit es
+          # Before=jellyfin.service → try-restart sería deadlock (jellyfin
+          # espera a que terminemos, nosotros esperamos a que jellyfin se
+          # reinicie). En primer install, jellyfin va a arrancar después de
+          # nosotros y va a cargar el plugin. Para version bumps en deploys
+          # subsiguientes, el unit dispara solo en cada nixos-rebuild y
+          # jellyfin tendrá que rearrancar manualmente:
+          #   sudo systemctl restart jellyfin.service
           ${pkgs.coreutils}/bin/echo -n "${plugin.version}" > "${marker}"
           ${pkgs.coreutils}/bin/chown jellyfin:media "${marker}"
           if [ "$INSTALLED" != "${plugin.version}" ]; then
-            echo "[sso-plugin-install] version cambió ($INSTALLED → ${plugin.version}); request restart"
-            ${pkgs.systemd}/bin/systemctl try-restart jellyfin.service || true
+            echo "[sso-plugin-install] version cambió ($INSTALLED → ${plugin.version}); restart jellyfin manualmente para cargar"
           fi
         '';
       });
