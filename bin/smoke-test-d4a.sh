@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Smoke test Fase D.4a — Native-OIDC SSO en servicios homelab.
-# Cubre Grafana + Paperless (los 2 servicios con OIDC nativo automatizable).
-# Vaultwarden y Jellyfin requieren acciones extra (fork build / plugin install)
-# y se cubren en sub-fases posteriores.
+# Cubre Grafana + Paperless (OIDC nativo automatizable) + Vaultwarden (fork
+# Timshel build) + Jellyfin (plugin 9p4/jellyfin-plugin-sso install).
+# Jellyseerr hereda de Jellyfin (auth via /api/v1/auth/jellyfin) — no checks
+# directos.
 #
 # Convención: misma que smoke-test-d3.sh — check name + comando, exit = #fails.
 set -uo pipefail
@@ -87,15 +88,63 @@ check "10 KC client 'paperless' tiene secret real" ssh "$HOST" "
   SECRET=\$(curl -sf -H \"Authorization: Bearer \$TOKEN\" \"http://127.0.0.1:8180/admin/realms/homelab/clients/\$ID/client-secret\" | jq -r .value)
   [ \${#SECRET} -ge 32 ] && [ \"\$SECRET\" != 'REPLACE_SECRET_paperless' ]"
 
+# === Vaultwarden — fork Timshel con SSO nativo ===
+
+check "11 vaultwarden.service active (fork Timshel 1.35.8)" ssh "$HOST" "
+  sudo systemctl is-active vaultwarden | grep -q '^active$'"
+
+check "12 VW combined.env tiene SSO_CLIENT_SECRET" ssh "$HOST" "
+  sudo grep -q '^SSO_CLIENT_SECRET=' /run/vaultwarden-sso/combined.env"
+
+check "13 VW /identity/sso/prevalidate → 200" ssh "$HOST" '
+  curl -sf -o /dev/null http://127.0.0.1:8222/identity/sso/prevalidate'
+
+check "14 VW webvault es OIDCWarden (variant button)" ssh "$HOST" '
+  curl -s http://127.0.0.1:8222/ | grep -q "OIDCWarden Web vault"'
+
+check "15 KC client 'vaultwarden' tiene secret real" ssh "$HOST" "
+  pass=\$(sudo cat /run/agenix/keycloak-admin-pass)
+  TOKEN=\$(curl -sf -X POST 'http://127.0.0.1:8180/realms/master/protocol/openid-connect/token' \
+    -d 'username=admin' --data-urlencode \"password=\$pass\" \
+    -d 'grant_type=password&client_id=admin-cli' | jq -r .access_token)
+  ID=\$(curl -sf -H \"Authorization: Bearer \$TOKEN\" 'http://127.0.0.1:8180/admin/realms/homelab/clients?clientId=vaultwarden' | jq -r '.[0].id')
+  SECRET=\$(curl -sf -H \"Authorization: Bearer \$TOKEN\" \"http://127.0.0.1:8180/admin/realms/homelab/clients/\$ID/client-secret\" | jq -r .value)
+  [ \${#SECRET} -ge 32 ] && [ \"\$SECRET\" != 'REPLACE_SECRET_vaultwarden' ]"
+
+# === Jellyfin — plugin 9p4/jellyfin-plugin-sso ===
+
+check "16 jellyfin.service active" ssh "$HOST" "
+  sudo systemctl is-active jellyfin | grep -q '^active$'"
+
+check "17 SSO-Auth plugin .dll instalado" ssh "$HOST" "
+  sudo test -f /var/lib/jellyfin/plugins/SSO-Auth_4.0.0.3/SSO-Auth.dll"
+
+check "18 SSO-Auth plugin loaded por jellyfin (journalctl)" ssh "$HOST" '
+  sudo journalctl -u jellyfin -n 200 --no-pager | grep -q "Loaded plugin: SSO-Auth"'
+
+check "19 plugin endpoint /sso/OID/States responde (rejects GET con 405 = unit alive)" ssh "$HOST" '
+  code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8096/sso/OID/States)
+  [ "$code" = "405" ] || [ "$code" = "401" ] || [ "$code" = "200" ]'
+
+check "20 KC client 'jellyfin' tiene secret real" ssh "$HOST" "
+  pass=\$(sudo cat /run/agenix/keycloak-admin-pass)
+  TOKEN=\$(curl -sf -X POST 'http://127.0.0.1:8180/realms/master/protocol/openid-connect/token' \
+    -d 'username=admin' --data-urlencode \"password=\$pass\" \
+    -d 'grant_type=password&client_id=admin-cli' | jq -r .access_token)
+  ID=\$(curl -sf -H \"Authorization: Bearer \$TOKEN\" 'http://127.0.0.1:8180/admin/realms/homelab/clients?clientId=jellyfin' | jq -r '.[0].id')
+  SECRET=\$(curl -sf -H \"Authorization: Bearer \$TOKEN\" \"http://127.0.0.1:8180/admin/realms/homelab/clients/\$ID/client-secret\" | jq -r .value)
+  [ \${#SECRET} -ge 32 ] && [ \"\$SECRET\" != 'REPLACE_SECRET_jellyfin' ]"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
-  echo "✓ Fase D.4a (Grafana + Paperless) verde"
+  echo "✓ Fase D.4a (Grafana + Paperless + Vaultwarden + Jellyfin) verde"
   echo
-  echo "PENDIENTES (acciones manuales, fuera del scope automatizable):"
-  echo "  - Vaultwarden: requiere fork timshel/vaultwarden (upstream sin SSO en 1.35.7)."
-  echo "  - Jellyfin:    requiere plugin jellyfin-plugin-sso (no empaquetado en nixpkgs)."
-  echo "  - Jellyseerr:  hereda de Jellyfin → bloqueado hasta plugin Jellyfin."
-  echo "  - CF Access bypass para paperless/vault/requests/grafana (mismo patrón que auth.*)."
+  echo "MANUAL — Jellyfin SSO provider config:"
+  echo "  jellyfin-sso-bootstrap es tolerante (exit 0 con warning) si el password en"
+  echo "  agenix no matches el set en la UI inicial. Workaround:"
+  echo "  Dashboard → Plugins → SSO-Auth → Add OID provider:"
+  echo "    Endpoint: https://auth.mauricioantolin.com/realms/homelab"
+  echo "    ClientId: jellyfin    Secret: \$(sudo cat /run/agenix/jellyfinSsoSecret 2>/dev/null)"
   exit 0
 else
   echo "✗ Al menos un check falló"
