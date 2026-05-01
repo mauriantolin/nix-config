@@ -200,10 +200,12 @@ in
               }
             }')
         ''}
+        # systemd EnvironmentFile parsing: valores con `"` deben estar quoted.
+        # JSON no contiene `'`, asi que single-quote wrap es seguro y simple.
         cat > /run/paperless-env/db.env <<EOF
         PAPERLESS_DBPASS=$pass
         PAPERLESS_SECRET_KEY=$secret
-        ${lib.optionalString cfg.oidc.enable "PAPERLESS_SOCIALACCOUNT_PROVIDERS=$oidc_json"}
+        ${lib.optionalString cfg.oidc.enable "PAPERLESS_SOCIALACCOUNT_PROVIDERS='$oidc_json'"}
         EOF
         chown paperless:paperless /run/paperless-env/db.env
         chmod 0400 /run/paperless-env/db.env
