@@ -186,14 +186,15 @@
   services.homepage-homelab = {
     enable = true;
     # Phase 8 — auto-extract API keys de servicios on-host para los widgets.
-    # Paperless/Grafana usan admin pass desde agenix; *arr/Bazarr leen su
-    # config.xml/yaml; Deluge usa default WebUI password.
+    # Paperless/Grafana/Deluge usan admin pass desde agenix; *arr/Bazarr leen su
+    # config.xml/yaml; Jellyfin/Jellyseerr usan API key.
     secretsBootstrap = {
       enable = true;
       paperlessAdminPassPath = config.age.secrets.paperlessAdminPass.path;
       grafanaAdminPassPath   = config.age.secrets.grafanaAdminPass.path;
       jellyfinApiKeyPath     = config.age.secrets.jellyfinApiKey.path;
       jellyseerrApiKeyPath   = config.age.secrets.jellyseerrApiKey.path;
+      delugeWebPassPath      = config.age.secrets.delugeWebPass.path;
     };
   };
 

@@ -43,10 +43,10 @@ in
         default = null;
         description = "Path al .age con admin pass de Grafana (basic auth en widget).";
       };
-      delugeWebUiPassword = lib.mkOption {
-        type = lib.types.str;
-        default = "deluge";
-        description = "Password WebUI Deluge (default 'deluge'; cambiar si se rota).";
+      delugeWebPassPath = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "Path al .age con web UI password de Deluge.";
       };
       jellyfinApiKeyPath = lib.mkOption {
         type = lib.types.nullOr lib.types.path;
@@ -173,7 +173,9 @@ in
             ++ (lib.optional (cfg.secretsBootstrap.jellyfinApiKeyPath != null)
               "jellyfin-key:${toString cfg.secretsBootstrap.jellyfinApiKeyPath}")
             ++ (lib.optional (cfg.secretsBootstrap.jellyseerrApiKeyPath != null)
-              "jellyseerr-key:${toString cfg.secretsBootstrap.jellyseerrApiKeyPath}");
+              "jellyseerr-key:${toString cfg.secretsBootstrap.jellyseerrApiKeyPath}")
+            ++ (lib.optional (cfg.secretsBootstrap.delugeWebPassPath != null)
+              "deluge-pass:${toString cfg.secretsBootstrap.delugeWebPassPath}");
         };
         script = ''
           set -uo pipefail
@@ -226,6 +228,11 @@ in
             JELLYSEERR_KEY=$(cat "$CREDENTIALS_DIRECTORY/jellyseerr-key")
           fi
 
+          DELUGE_PASS=""
+          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/deluge-pass" ]; then
+            DELUGE_PASS=$(cat "$CREDENTIALS_DIRECTORY/deluge-pass")
+          fi
+
           NEW=$(mktemp -p /run/homepage-secrets .env.XXXXXX)
           chmod 0400 "$NEW"
           cat > "$NEW" <<EOF
@@ -235,7 +242,7 @@ in
           HOMEPAGE_VAR_BAZARR_KEY=$BAZARR
           HOMEPAGE_VAR_PAPERLESS_TOKEN=$PAPERLESS_TOKEN
           HOMEPAGE_VAR_GRAFANA_PASS=$GRAFANA_PASS
-          HOMEPAGE_VAR_DELUGE_PASS=${cfg.secretsBootstrap.delugeWebUiPassword}
+          HOMEPAGE_VAR_DELUGE_PASS=$DELUGE_PASS
           HOMEPAGE_VAR_JELLYFIN_KEY=$JELLYFIN_KEY
           HOMEPAGE_VAR_JELLYSEERR_KEY=$JELLYSEERR_KEY
           EOF
