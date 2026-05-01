@@ -294,7 +294,10 @@
     ];
   };
 
-  services.grafana-homelab.enable = true;
+  services.grafana-homelab = {
+    enable = true;
+    oidc.enable = true;   # SSO via Keycloak (D.4a)
+  };
 
   # ── E.2a — Jellyfin ─────────────────────────────────────────────────────────
   services.jellyfin-homelab = {

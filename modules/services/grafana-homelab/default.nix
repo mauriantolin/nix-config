@@ -45,6 +45,27 @@ in
       type = lib.types.str;
       default = "admin";
     };
+
+    oidc = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Habilitar SSO via Keycloak (realm homelab, client `grafana`).
+          Mapea roles `homelab:admin` → GrafanaAdmin, `homelab:family` → Editor,
+          resto → Viewer (JMES role_attribute_path sobre realm_access.roles).
+        '';
+      };
+      issuerBase = lib.mkOption {
+        type = lib.types.str;
+        default = "https://auth.mauricioantolin.com/realms/homelab";
+        description = "Base URL del realm Keycloak (sin trailing slash).";
+      };
+      clientId = lib.mkOption {
+        type = lib.types.str;
+        default = "grafana";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -61,6 +82,15 @@ in
     # owner=grafana para que el unit grafana pueda leerlo.
     age.secrets.postgresGrafanaPassForGrafana = {
       file  = "${secretsRoot}/postgres-grafana-pass.age";
+      owner = "grafana";
+      group = "grafana";
+      mode  = "0400";
+    };
+
+    # OIDC client secret (mismo .age que el bootstrap KC inyecta en el realm —
+    # double declaration es OK, agenix crea symlinks separados al mismo plaintext).
+    age.secrets.oidcClientGrafana = lib.mkIf cfg.oidc.enable {
+      file  = "${secretsRoot}/oidc-client-grafana.age";
       owner = "grafana";
       group = "grafana";
       mode  = "0400";
@@ -108,6 +138,32 @@ in
         };
 
         "auth.anonymous".enabled = false;
+
+        # ── OIDC vía Keycloak (realm homelab) ──────────────────────────────
+        # Grafana soporta `$__file{}` en TODOS los settings → el client_secret
+        # nunca aparece en el config rendered. role_attribute_path es JMES sobre
+        # el ID/access token; KC mete los realm roles en `realm_access.roles[]`
+        # cuando el scope `roles` está incluido.
+        "auth.generic_oauth" = lib.mkIf cfg.oidc.enable {
+          enabled                     = true;
+          name                        = "Keycloak";
+          allow_sign_up               = true;
+          client_id                   = cfg.oidc.clientId;
+          client_secret               = "$__file{${config.age.secrets.oidcClientGrafana.path}}";
+          scopes                      = "openid profile email roles";
+          auth_url                    = "${cfg.oidc.issuerBase}/protocol/openid-connect/auth";
+          token_url                   = "${cfg.oidc.issuerBase}/protocol/openid-connect/token";
+          api_url                     = "${cfg.oidc.issuerBase}/protocol/openid-connect/userinfo";
+          signout_redirect_url        = "${cfg.oidc.issuerBase}/protocol/openid-connect/logout";
+          use_pkce                    = true;
+          use_refresh_token           = true;
+          # JMES sobre el JWT decodificado: chequeo en orden, primer match gana.
+          role_attribute_path         = "contains(realm_access.roles[*], 'homelab:admin') && 'GrafanaAdmin' || contains(realm_access.roles[*], 'homelab:family') && 'Editor' || 'Viewer'";
+          role_attribute_strict       = false;   # fallback Viewer si nada match
+          allow_assign_grafana_admin  = true;    # GrafanaAdmin role flag
+          # Opcional: forzar dominio email (todavía no — hasta family onboarding)
+          # allowed_domains          = "mauricioantolin.com";
+        };
 
         analytics = {
           reporting_enabled = false;
