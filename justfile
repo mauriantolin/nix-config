@@ -41,3 +41,15 @@ smoke-b:
 # Lista generaciones de NixOS
 generations:
 	sudo nix-env --list-generations --profile /nix/var/nix/profiles/system
+
+# Smoke test Fase C.1 — web services + fail2ban-cloudflare
+smoke-c1:
+	bash bin/smoke-test-c1.sh
+
+# Smoke test Fase C.2 — Samba
+smoke-c2:
+	bash bin/smoke-test-c2.sh
+
+# Shortcut diagnóstico fail2ban
+fail2ban-status:
+	ssh mauri@home-server 'sudo fail2ban-client status'
