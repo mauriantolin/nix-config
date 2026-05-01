@@ -1,6 +1,19 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.tailscale-serve-homelab;
+
+  # Itera handlers y emite una línea `tailscale serve` por cada uno.
+  # Cada handler: Port (default 443) + Path (default /) + Proxy (URL backend).
+  # Múltiples paths sobre el mismo port son OK con tailscale serve >=1.78.
+  handlerLines = lib.concatMapStringsSep "\n"
+    (name:
+      let h = cfg.handlers.${name}; in
+      ''
+        # ${name}
+        "$TS" serve --bg --https=${toString h.Port} ${h.Path} ${h.Proxy}
+      ''
+    )
+    (lib.attrNames cfg.handlers);
 in
 {
   options.services.tailscale-serve-homelab = {
@@ -12,16 +25,42 @@ in
       description = "Magic DNS hostname of this node in the tailnet.";
     };
 
-    # Kept for documentation purposes — with imperative tailscale serve the two
-    # backends (Homepage :3000 and Kuma :3001) are hardcoded in the ExecStart
-    # script because tailscale 1.90 does not support declarative --set-raw.
     handlers = lib.mkOption {
-      type    = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
-      default = {
-        "/"        = { Proxy = "http://127.0.0.1:3000"; };
-        "/uptime/" = { Proxy = "http://127.0.0.1:3001"; };
-      };
-      description = "Documentation-only: backend mapping (not consumed by the imperative script).";
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          Proxy = lib.mkOption {
+            type = lib.types.str;
+            example = "http://127.0.0.1:3000";
+            description = "URL del backend al que tailscale serve hace reverse proxy.";
+          };
+          Port = lib.mkOption {
+            type = lib.types.port;
+            default = 443;
+            description = "HTTPS port en el que escucha tailscale serve.";
+          };
+          Path = lib.mkOption {
+            type = lib.types.str;
+            default = "/";
+            description = ''
+              Path mountpoint dentro del puerto. Permite múltiples handlers
+              sobre el mismo port (ej. / + /grafana/ ambos en :443).
+              Para servicios que rompen bajo subpath (Kuma): usar Path=/ + Port distinto.
+            '';
+          };
+        };
+      });
+      default = { };
+      description = ''
+        Mapa de <name> → { Port; Path; Proxy }. El attr name es decorativo
+        (se usa solo para comentar la línea generada). Útil para describir el servicio.
+      '';
+      example = lib.literalExpression ''
+        {
+          homepage  = { Proxy = "http://127.0.0.1:3000"; };
+          grafana   = { Proxy = "http://127.0.0.1:3030"; Path = "/grafana/"; };
+          uptime    = { Proxy = "http://127.0.0.1:3001"; Port = 8443; };
+        }
+      '';
     };
   };
 
@@ -33,7 +72,7 @@ in
     # Apply the serve config imperatively (tailscale 1.90 has no --set-raw)
     # ------------------------------------------------------------------ #
     systemd.services.tailscale-serve-config = {
-      description = "Apply imperative tailscale serve config (/ → :3000, :8443 → Kuma :3001)";
+      description = "Apply imperative tailscale serve config from cfg.handlers";
       after    = [ "tailscaled.service" "network-online.target" ];
       wants    = [ "tailscaled.service" "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
@@ -49,12 +88,7 @@ in
           # Reset any previous config to ensure idempotency.
           "$TS" serve reset || true
 
-          # :443 / → Homepage on :3000
-          "$TS" serve --bg --https=443 http://127.0.0.1:3000
-
-          # :8443 / → Uptime Kuma on :3001 (Plan B: Kuma's frontend redirige a /dashboard
-          # absoluto cuando corre bajo subpath, rompiendo /uptime/. Puerto dedicado lo evita.)
-          "$TS" serve --bg --https=8443 http://127.0.0.1:3001
+          ${handlerLines}
         '';
       };
     };
