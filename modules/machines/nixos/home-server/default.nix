@@ -341,6 +341,8 @@
     # autoBootstrap=true por default → arr-bootstrap.service conecta
     # Prowlarr↔Sonarr/Radarr, Sonarr/Radarr→Deluge, Bazarr↔Sonarr/Radarr.
     # Idempotente (skip si la integración ya existe).
+    # D.4b iter 2: trust upstream oauth2-proxy via loopback (single-step SSO).
+    oauth2ProxyTrust = true;
   };
 
   # ── E.2d — Jellyseerr (UI de requests) ──────────────────────────────────────

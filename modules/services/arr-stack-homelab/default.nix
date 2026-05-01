@@ -53,6 +53,23 @@ in
         delugeWebPass disponible.
       '';
     };
+
+    oauth2ProxyTrust = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        D.4b iter 2: cuando true, el oneshot `arr-auth-external` setea en cada
+        *arr (sonarr/radarr/prowlarr) `AuthenticationMethod=External` +
+        `AuthenticationRequired=DisabledForLocalAddresses`, y en bazarr
+        `auth.type=null`. Resultado: oauth2-proxy (loopback 127.0.0.1) es trust
+        automático; usuarios externos llegan ya autenticados via oauth2-proxy →
+        Keycloak; break-glass via SSH tunnel a 127.0.0.1 también queda trust.
+
+        Pre-requisito: oauth2-proxy-homelab activo y los servicios *arr SOLO
+        accesibles via loopback (no listen 0.0.0.0 sin gate). Caso contrario,
+        cualquier proceso local hitea *arr sin auth.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -431,6 +448,113 @@ JSON
         fi
 
         echo "[bootstrap] arr-stack OK"
+      '';
+    };
+
+    # ── D.4b iter 2 — disable internal auth, trust oauth2-proxy via loopback ──
+    # Sonarr/Radarr/Prowlarr config.xml editado a:
+    #   <AuthenticationMethod>External</AuthenticationMethod>
+    #   <AuthenticationRequired>DisabledForLocalAddresses</AuthenticationRequired>
+    # Bazarr config.yaml editado a auth.type=null.
+    # oauth2-proxy se conecta desde 127.0.0.1 → *arr lo trata como local → no auth.
+    # Break-glass SSH tunnel también local → no auth. Acceso externo (imposible
+    # con loopback-only) requeriría header External, fail.
+    systemd.services.arr-auth-external = lib.mkIf cfg.oauth2ProxyTrust {
+      description = "Configurar *arr/bazarr para trust upstream oauth2-proxy (loopback)";
+      after = [
+        "sonarr.service"
+        "radarr.service"
+        "prowlarr.service"
+        "bazarr.service"
+      ];
+      requires = [
+        "sonarr.service"
+        "radarr.service"
+        "prowlarr.service"
+        "bazarr.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+      path = with pkgs; [ coreutils gnused gawk libxml2 systemd ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        Restart = "on-failure";
+        RestartSec = "30s";
+      };
+      script = ''
+        set -uo pipefail
+
+        # Patch sonarr/radarr/prowlarr config.xml (XML, simple find/replace).
+        # Cada archivo se chequea en loop hasta aparecer (primer arranque puede
+        # tardar 30-60s en escribirlo).
+        patch_xml_arr() {
+          local svc="$1" cfg_file="$2" want_method="External" want_required="DisabledForLocalAddresses"
+          for i in $(seq 1 60); do
+            [ -f "$cfg_file" ] && break
+            sleep 2
+          done
+          if [ ! -f "$cfg_file" ]; then
+            echo "[arr-auth-external] $svc: $cfg_file no aparece, skip" >&2
+            return 0
+          fi
+          local cur_method cur_required
+          cur_method=$(xmllint --xpath 'string(//AuthenticationMethod)' "$cfg_file" 2>/dev/null || echo "")
+          cur_required=$(xmllint --xpath 'string(//AuthenticationRequired)' "$cfg_file" 2>/dev/null || echo "")
+          if [ "$cur_method" = "$want_method" ] && [ "$cur_required" = "$want_required" ]; then
+            echo "[arr-auth-external] $svc: ya configurado ($cur_method/$cur_required)"
+            return 0
+          fi
+          # sed in-place: reemplaza el contenido entre tags. Si el tag no existe
+          # (config nuevo sin auth seteada), el sed no toca; appendamos al final
+          # del root <Config>.
+          local owner group
+          owner=$(stat -c '%U' "$cfg_file")
+          group=$(stat -c '%G' "$cfg_file")
+          if grep -q '<AuthenticationMethod>' "$cfg_file"; then
+            sed -i "s|<AuthenticationMethod>[^<]*</AuthenticationMethod>|<AuthenticationMethod>$want_method</AuthenticationMethod>|" "$cfg_file"
+          else
+            sed -i "s|</Config>|  <AuthenticationMethod>$want_method</AuthenticationMethod>\n</Config>|" "$cfg_file"
+          fi
+          if grep -q '<AuthenticationRequired>' "$cfg_file"; then
+            sed -i "s|<AuthenticationRequired>[^<]*</AuthenticationRequired>|<AuthenticationRequired>$want_required</AuthenticationRequired>|" "$cfg_file"
+          else
+            sed -i "s|</Config>|  <AuthenticationRequired>$want_required</AuthenticationRequired>\n</Config>|" "$cfg_file"
+          fi
+          chown "$owner:$group" "$cfg_file"
+          echo "[arr-auth-external] $svc: patched (method/$want_method, required/$want_required) — restart"
+          systemctl try-restart "$svc.service" || true
+        }
+
+        patch_xml_arr sonarr   /var/lib/sonarr/config.xml
+        patch_xml_arr radarr   /var/lib/radarr/config.xml
+        # Prowlarr usa DynamicUser → state real está en /var/lib/private/prowlarr.
+        # /var/lib/prowlarr es symlink (NixOS la maneja).
+        patch_xml_arr prowlarr /var/lib/prowlarr/config.xml
+
+        # Bazarr config.yaml (auth.type:): valores válidos null|basic|form
+        # (YAML null mapea a Python None). Sed-replace solo si != null.
+        BAZARR_CFG=/var/lib/bazarr/config/config.yaml
+        for i in $(seq 1 60); do
+          [ -f "$BAZARR_CFG" ] && break
+          sleep 2
+        done
+        if [ -f "$BAZARR_CFG" ]; then
+          CUR_AUTH=$(awk '/^auth:/{flag=1; next} flag && /^[a-z]/{flag=0} flag && /^\s+type:\s*/{print $2; exit}' "$BAZARR_CFG" | tr -d '"' )
+          if [ "$CUR_AUTH" != "null" ] && [ "$CUR_AUTH" != "" ]; then
+            owner=$(stat -c '%U' "$BAZARR_CFG")
+            group=$(stat -c '%G' "$BAZARR_CFG")
+            # sed: dentro del bloque `auth:` (entre líneas con guión left-margin)
+            # reemplaza la línea `  type: ...` por `  type: null`.
+            sed -i '/^auth:/,/^[a-z]/{s/^\(\s*type:\s*\).*$/\1null/}' "$BAZARR_CFG"
+            chown "$owner:$group" "$BAZARR_CFG"
+            echo "[arr-auth-external] bazarr: auth.type → null — restart"
+            systemctl try-restart bazarr.service || true
+          else
+            echo "[arr-auth-external] bazarr: ya configurado (auth.type=$CUR_AUTH)"
+          fi
+        else
+          echo "[arr-auth-external] bazarr: $BAZARR_CFG no aparece, skip" >&2
+        fi
       '';
     };
   };
