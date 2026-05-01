@@ -37,6 +37,15 @@ in
       description = "HTTP port. Loopback only — CF Tunnel + Tailscale Serve hacen reverse proxy.";
     };
 
+    managementPort = lib.mkOption {
+      type = lib.types.port;
+      default = 9000;
+      description = ''
+        Management interface port (Keycloak 26+ separa /health, /metrics
+        a este puerto, distinto del frontend HTTP). Loopback-only.
+      '';
+    };
+
     hostname = lib.mkOption {
       type = lib.types.str;
       default = "auth.mauricioantolin.com";
@@ -215,6 +224,9 @@ in
 
       environment = {
         KC_URL = "http://127.0.0.1:${toString cfg.port}";
+        # Keycloak 26+ expone /health en el management interface (puerto 9000),
+        # NO en el frontend HTTP. Bootstrap polea ese URL para detectar READY.
+        KC_HEALTH_URL = "http://127.0.0.1:${toString cfg.managementPort}";
         ADMIN_PLACEHOLDER = adminPlaceholder;
         ADMIN_USER = cfg.adminUser;
         SMTP_ENABLE = if cfg.smtp.enable then "1" else "0";
@@ -230,10 +242,11 @@ in
       script = ''
         set -euo pipefail
 
-        # 1. Espera Keycloak READY (max 5 min)
-        echo "[bootstrap] esperando Keycloak READY en $KC_URL/health/ready..."
+        # 1. Espera Keycloak READY (max 5 min). En KC 26 /health vive en
+        # management interface ($KC_HEALTH_URL = :9000), no en frontend HTTP.
+        echo "[bootstrap] esperando Keycloak READY en $KC_HEALTH_URL/health/ready..."
         for i in $(seq 1 60); do
-          if curl -sf -m 5 "$KC_URL/health/ready" >/dev/null 2>&1; then
+          if curl -sf -m 5 "$KC_HEALTH_URL/health/ready" >/dev/null 2>&1; then
             echo "[bootstrap] Keycloak READY"
             break
           fi

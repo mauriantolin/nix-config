@@ -66,8 +66,8 @@ check "11 keycloak escucha 127.0.0.1:8180 (no LAN/WAN)" ssh "$HOST" "
   sudo ss -tnlp | grep -q '127.0.0.1:8180' && \
   ! sudo ss -tnlp | grep -E ':8180' | grep -qv '127.0.0.1'"
 
-check "12 /health/ready devuelve UP" ssh "$HOST" "
-  curl -sf -m 10 http://127.0.0.1:8180/health/ready | grep -q '\"status\": \"UP\"'"
+check "12 /health/ready devuelve UP (management port :9000)" ssh "$HOST" "
+  curl -sf -m 10 http://127.0.0.1:9000/health/ready | grep -q '\"status\": \"UP\"'"
 
 # === bootstrap oneshot ===
 
