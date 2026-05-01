@@ -30,11 +30,33 @@ in
             default = { };
             description = "ZFS properties extra (e.g. compression, atime, etc.)";
           };
+          # D.3 — soporte para datasets ZFS-encriptados (key vía agenix).
+          # Si encrypted=true, el create incluye `-o encryption=aes-256-gcm
+          # -o keyformat=raw -o keylocation=file://${encryptionKeyPath}` y
+          # el script hace `zfs load-key` al boot si la key todavía no está cargada.
+          # Requiere que el unit corra DESPUÉS de agenix.service (auto-añadido cuando
+          # algún dataset declara encrypted=true).
+          encrypted = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Si true, dataset es ZFS-encriptado y se hace load-key automático.";
+          };
+          encryptionKeyPath = lib.mkOption {
+            # str (no path) porque /run/agenix/X es runtime path, no Nix store.
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            description = ''
+              Path al raw 32-byte key (típicamente /run/agenix/<keyname>).
+              REQUIRED si encrypted=true. Pasalo como
+              `config.age.secrets.<keyname>.path`.
+            '';
+            example = "/run/agenix/keycloakZfsKey";
+          };
         };
       });
       default = { };
       description = ''
-        Map of <full-dataset-path> → { recordsize?; extraProperties }.
+        Map of <full-dataset-path> → { recordsize?; extraProperties; encrypted?; encryptionKeyPath? }.
         mountpoint=legacy se setea siempre (todos los datasets del homelab usan
         fileSystems para mount). Pool y parent dataset deben existir.
       '';
@@ -43,6 +65,11 @@ in
           "rpool/services/postgres-shared" = { recordsize = "8K"; };
           "rpool/services/paperless" = {};
           "tank/docs" = { recordsize = "1M"; };
+          "rpool/services/keycloak" = {
+            encrypted = true;
+            encryptionKeyPath = "/run/agenix/keycloakZfsKey";
+            extraProperties = { compression = "zstd-3"; };
+          };
         }
       '';
     };
@@ -64,12 +91,24 @@ in
   };
 
   config = lib.mkIf (cfg.enable && cfg.datasets != { }) {
+    # Fail fast si se declara encrypted=true sin path
+    assertions =
+      lib.mapAttrsToList
+        (ds: spec: {
+          assertion = !spec.encrypted || spec.encryptionKeyPath != null;
+          message = "zfs-services-bootstrap: dataset '${ds}' tiene encrypted=true pero encryptionKeyPath=null.";
+        })
+        cfg.datasets;
+
     systemd.services.zfs-services-bootstrap = {
       description = "Auto-create missing ZFS datasets for homelab services";
       # Corre DESPUÉS de imports + ANTES de los mount units específicos.
       # NO usar local-fs.target acá: causa ordering cycle con sysinit.target.
-      after = [ "zfs-import.target" ];
-      requires = [ "zfs-import.target" ];
+      # Si hay datasets encriptados, también esperamos a agenix (que poblá /run/agenix/*).
+      after = [ "zfs-import.target" ]
+        ++ lib.optional (lib.any (x: x.encrypted) (lib.attrValues cfg.datasets)) "agenix.service";
+      requires = [ "zfs-import.target" ]
+        ++ lib.optional (lib.any (x: x.encrypted) (lib.attrValues cfg.datasets)) "agenix.service";
       before = cfg.beforeMounts;
       wantedBy = cfg.beforeMounts;
 
@@ -93,6 +132,17 @@ in
                 "-o recordsize=${spec.recordsize}";
               extraArgs = lib.concatStringsSep " "
                 (lib.mapAttrsToList (k: v: "-o ${k}=${v}") spec.extraProperties);
+              encArgs = lib.optionalString spec.encrypted (
+                "-o encryption=aes-256-gcm "
+                + "-o keyformat=raw "
+                + "-o keylocation=file://${toString spec.encryptionKeyPath}"
+              );
+              loadKeyOnExisting = lib.optionalString spec.encrypted ''
+                if ${pkgs.zfs}/bin/zfs get -H -o value keystatus "${ds}" 2>/dev/null | grep -q unavailable; then
+                  echo "[zfs-services-bootstrap] loading key for ${ds}"
+                  ${pkgs.zfs}/bin/zfs load-key "${ds}"
+                fi
+              '';
             in
             ''
               if ! ${pkgs.zfs}/bin/zfs list -H -o name "${ds}" >/dev/null 2>&1; then
@@ -101,10 +151,12 @@ in
                   -o mountpoint=legacy \
                   ${recordsizeArg} \
                   ${extraArgs} \
+                  ${encArgs} \
                   "${ds}"
               else
-                echo "[zfs-services-bootstrap] ${ds} already exists, skipping"
+                echo "[zfs-services-bootstrap] ${ds} already exists, skipping create"
               fi
+              ${loadKeyOnExisting}
             '';
         in
         ''

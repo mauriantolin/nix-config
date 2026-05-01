@@ -58,6 +58,14 @@
       "rpool/services/radarr"          = { };
       "rpool/services/bazarr"          = { };
       # E.2d — Jellyseerr DynamicUser=yes → vive en rpool/var (sin dataset propio)
+      # D.3 — Keycloak con ZFS native encryption (key en agenix)
+      "rpool/services/keycloak" = {
+        encrypted = true;
+        encryptionKeyPath = config.age.secrets.keycloakZfsKey.path;
+        extraProperties = {
+          compression = "zstd-3";
+        };
+      };
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
@@ -80,6 +88,8 @@
       "var-lib-sonarr.mount"
       "var-lib-radarr.mount"
       "var-lib-bazarr.mount"
+      # D.3 — Keycloak (encrypted dataset, requiere load-key pre-mount)
+      "var-lib-keycloak.mount"
     ];
   };
 
@@ -246,6 +256,17 @@
   age.secrets.postgresImmichPass.file    = "${inputs.secrets}/secrets/postgres-immich-pass.age";
   age.secrets.postgresHassPass.file      = "${inputs.secrets}/secrets/postgres-hass-pass.age";
 
+  # D.3 — Keycloak ZFS encryption key. Declarado en host-level (no en módulo)
+  # porque zfs-services-bootstrap.service lo necesita ANTES de que el módulo
+  # keycloak-homelab corra. owner=root porque /run/agenix/X se lee por zfs-bootstrap
+  # como root.
+  age.secrets.keycloakZfsKey = {
+    file = "${inputs.secrets}/secrets/keycloak-zfs-key.age";
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+
   services.paperless-homelab.enable = true;
 
   services.radicale-homelab.enable = true;
@@ -397,6 +418,11 @@
     fsType = "zfs";
   };
   # E.2d — Jellyseerr: DynamicUser=yes, sin dataset (rpool/var)
+  # D.3 — Keycloak (encrypted dataset, key en agenix; load-key vía zfs-services-bootstrap)
+  fileSystems."/var/lib/keycloak" = {
+    device = "rpool/services/keycloak";
+    fsType = "zfs";
+  };
   # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared
   # escribe a /srv/backups/postgresql (subdir creado via tmpfiles).
 

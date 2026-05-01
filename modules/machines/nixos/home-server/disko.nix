@@ -215,6 +215,23 @@
             options.mountpoint = "legacy";
           };
           # E.2d — Jellyseerr también es DynamicUser=yes → sin dataset dedicado.
+          # D.3 — Keycloak SSO con ZFS native encryption (key en agenix).
+          # NOTA: este dataset disko NO se crea automáticamente al instalar (su
+          # keylocation apunta a /run/agenix/* que no existe en install-time).
+          # Se crea via zfs-services-bootstrap.service (que corre AFTER agenix
+          # ya pobló /run/agenix/keycloakZfsKey). Este declarativo queda como
+          # documentación + por si nixos-anywhere se mueve a un init-time agenix.
+          "services/keycloak" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/keycloak";
+            options = {
+              mountpoint = "legacy";
+              encryption = "aes-256-gcm";
+              keyformat = "raw";
+              keylocation = "file:///run/agenix/keycloakZfsKey";
+              compression = "zstd-3";
+            };
+          };
         };
       };
 
