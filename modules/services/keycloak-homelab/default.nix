@@ -89,26 +89,33 @@ in
     # Nix no acepta `age.secrets.X = ...` y `age.secrets = ...` en la misma
     # attrset literal (collision). Combinamos vía mkMerge para preservar la
     # condicionalidad de smtp con mkIf y para fusionar los OIDC clients.
+    #
+    # Lección 2026-04-27: NixOS 25.11 services.keycloak usa `DynamicUser=yes`.
+    # El user `keycloak` no existe en /etc/passwd al momento de agenixChown
+    # (lo crea systemd al arrancar la unit) → chown falla con "invalid user".
+    # Solución: ownership root:root mode=0400. systemd LoadCredential lee como
+    # root y expone al DynamicUser via $CREDENTIALS_DIRECTORY (mismo patrón
+    # que cloudflared, prowlarr, jellyseerr).
     age.secrets = lib.mkMerge [
       {
         "keycloak-db-pass" = {
           file = "${secretsRoot}/keycloak-db-pass.age";
-          owner = "keycloak";
-          group = "keycloak";
+          owner = "root";
+          group = "root";
           mode = "0400";
         };
         "keycloak-admin-pass" = {
           file = "${secretsRoot}/keycloak-admin-pass.age";
-          owner = "keycloak";
-          group = "keycloak";
+          owner = "root";
+          group = "root";
           mode = "0400";
         };
       }
       (lib.mkIf cfg.smtp.enable {
         "keycloak-smtp-pass" = {
           file = "${secretsRoot}/keycloak-smtp-pass.age";
-          owner = "keycloak";
-          group = "keycloak";
+          owner = "root";
+          group = "root";
           mode = "0400";
         };
       })
@@ -117,8 +124,8 @@ in
       (lib.mapAttrs'
         (clientName: secretFile: lib.nameValuePair secretFile {
           file = "${secretsRoot}/${secretFile}.age";
-          owner = "keycloak";
-          group = "keycloak";
+          owner = "root";
+          group = "root";
           mode = "0400";
         })
         oidcClients)
