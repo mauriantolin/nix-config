@@ -131,10 +131,13 @@
       # Uptime Kuma en puerto dedicado :8443 (su frontend rompe bajo subpath:
       # redirige a /dashboard absoluto. Plan B documentado en spec C.1).
       uptime = { Proxy = "http://127.0.0.1:3001"; Port = 8443; };
-      # E.3 — Grafana en :443/grafana/. serve_from_sub_path=true + root_url
-      # cargan assets desde /grafana/ OK. Si plugin asume root=/, fallback:
-      # mover a Port dedicado (ver spec Q1).
-      grafana = { Proxy = "http://127.0.0.1:3030"; Path = "/grafana/"; };
+      # E.3 — Grafana en :3443/ (root path, puerto dedicado).
+      # Subpath /grafana/ producía redirect loop con TLS-termination de Tailscale
+      # Serve. Mismo patrón Plan-B que Kuma. URL: https://...:3443/.
+      grafana = { Proxy = "http://127.0.0.1:3030"; Port = 3443; };
+      # E.3 — Prometheus en :9443/ (uso interno; rara vez se accede directo,
+      # pero útil para debug de scrape targets sin SSH).
+      prometheus = { Proxy = "http://127.0.0.1:9090"; Port = 9443; };
     };
   };
 

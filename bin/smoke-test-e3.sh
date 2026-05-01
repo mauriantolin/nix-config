@@ -105,8 +105,12 @@ check "13 grafana 2 dashboards provisionados (homelab-overview + zfs-pool)" ssh 
   curl -s -u "admin:$PASS" "http://127.0.0.1:3030/api/dashboards/uid/homelab-overview" | grep -q "\"uid\":\"homelab-overview\"" && \
   curl -s -u "admin:$PASS" "http://127.0.0.1:3030/api/dashboards/uid/zfs-pool" | grep -q "\"uid\":\"zfs-pool\""'
 
-check "14 grafana via Tailscale Serve subpath responde" ssh "$HOST" '
-  CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 https://home-server.tailee5654.ts.net/grafana/api/health)
+check "14 grafana via Tailscale Serve :3443 responde (no redirect loop)" ssh "$HOST" '
+  CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 https://home-server.tailee5654.ts.net:3443/api/health)
+  [ "$CODE" = "200" ]'
+
+check "14b prometheus via Tailscale Serve :9443 responde" ssh "$HOST" '
+  CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 https://home-server.tailee5654.ts.net:9443/-/healthy)
   [ "$CODE" = "200" ]'
 
 # === Datasets ===
