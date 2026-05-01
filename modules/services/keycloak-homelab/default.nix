@@ -86,35 +86,43 @@ in
 
   config = lib.mkIf cfg.enable {
     # ── agenix secrets ─────────────────────────────────────────────────────
-    age.secrets."keycloak-db-pass" = {
-      file = "${secretsRoot}/keycloak-db-pass.age";
-      owner = "keycloak";
-      group = "keycloak";
-      mode = "0400";
-    };
-    age.secrets."keycloak-admin-pass" = {
-      file = "${secretsRoot}/keycloak-admin-pass.age";
-      owner = "keycloak";
-      group = "keycloak";
-      mode = "0400";
-    };
-    age.secrets."keycloak-smtp-pass" = lib.mkIf cfg.smtp.enable {
-      file = "${secretsRoot}/keycloak-smtp-pass.age";
-      owner = "keycloak";
-      group = "keycloak";
-      mode = "0400";
-    };
-
-    # OIDC client secrets — keys keycloakDbPass/Admin/Smtp por arriba; los OIDC
-    # quedan en sus propios attrs con file name como key.
-    age.secrets = lib.mapAttrs'
-      (clientName: secretFile: lib.nameValuePair secretFile {
-        file = "${secretsRoot}/${secretFile}.age";
-        owner = "keycloak";
-        group = "keycloak";
-        mode = "0400";
+    # Nix no acepta `age.secrets.X = ...` y `age.secrets = ...` en la misma
+    # attrset literal (collision). Combinamos vía mkMerge para preservar la
+    # condicionalidad de smtp con mkIf y para fusionar los OIDC clients.
+    age.secrets = lib.mkMerge [
+      {
+        "keycloak-db-pass" = {
+          file = "${secretsRoot}/keycloak-db-pass.age";
+          owner = "keycloak";
+          group = "keycloak";
+          mode = "0400";
+        };
+        "keycloak-admin-pass" = {
+          file = "${secretsRoot}/keycloak-admin-pass.age";
+          owner = "keycloak";
+          group = "keycloak";
+          mode = "0400";
+        };
+      }
+      (lib.mkIf cfg.smtp.enable {
+        "keycloak-smtp-pass" = {
+          file = "${secretsRoot}/keycloak-smtp-pass.age";
+          owner = "keycloak";
+          group = "keycloak";
+          mode = "0400";
+        };
       })
-      oidcClients;
+      # OIDC client secrets — value de oidcClients es el .age filename, lo usamos
+      # también como key del age.secrets attr.
+      (lib.mapAttrs'
+        (clientName: secretFile: lib.nameValuePair secretFile {
+          file = "${secretsRoot}/${secretFile}.age";
+          owner = "keycloak";
+          group = "keycloak";
+          mode = "0400";
+        })
+        oidcClients)
+    ];
 
     # ── Postgres DB (gestionado via postgres-shared-homelab) ───────────────
     services.postgres-shared-homelab.databases.keycloak = {
