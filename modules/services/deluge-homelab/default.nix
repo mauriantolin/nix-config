@@ -60,10 +60,11 @@ in
 
   config = lib.mkIf cfg.enable {
     # Secret: web UI password (idem patrón otros servicios homelab).
+    # Group=media porque services.deluge.group="media" → primary group del user.
     age.secrets.delugeWebPass = {
       file  = "${secretsRoot}/deluge-web-pass.age";
       owner = "deluge";
-      group = "deluge";
+      group = "media";
       mode  = "0400";
     };
 
@@ -149,21 +150,35 @@ in
     # Level 10 = admin (full access). Web UI usa este file para auth.
     systemd.services.deluge-auth-prepare = {
       description = "Render deluge authFile from agenix";
-      after = [ "agenix.service" ];
-      before = [ "deluged.service" "deluge-web.service" ];
-      wantedBy = [ "deluged.service" ];
+      after = [ "agenix.service" "deluge-storage-prepare.service" ];
+      requires = [ "deluge-storage-prepare.service" ];
+      before = [ "deluged.service" "delugeweb.service" ];
+      wantedBy = [ "deluged.service" "delugeweb.service" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
       };
       script = ''
         umask 077
-        ${pkgs.coreutils}/bin/install -d -m 0750 -o deluge -g deluge /run/deluge
+        # Group del deluge user es "media" (services.deluge.group); no existe "deluge" group.
+        ${pkgs.coreutils}/bin/install -d -m 0750 -o deluge -g media /run/deluge
         pass=$(cat ${config.age.secrets.delugeWebPass.path})
-        ${pkgs.coreutils}/bin/install -m 0400 -o deluge -g deluge /dev/null /run/deluge/auth
+
+        # /run/deluge/auth: usado por deluged (RPC daemon auth, cfg.authFile points here)
+        ${pkgs.coreutils}/bin/install -m 0400 -o deluge -g media /dev/null /run/deluge/auth
         printf '%s:%s:10\n' "${cfg.webUser}" "$pass" > /run/deluge/auth
-        ${pkgs.coreutils}/bin/chown deluge:deluge /run/deluge/auth
+        ${pkgs.coreutils}/bin/chown deluge:media /run/deluge/auth
         ${pkgs.coreutils}/bin/chmod 0400 /run/deluge/auth
+
+        # /var/lib/deluge/.config/deluge/auth: usado por delugeweb (localclient handshake).
+        # Si no existe, deluge-web intenta crearlo y falla con FileNotFoundError.
+        # Mismo contenido — el web UI password se setea via cfg.web (setting separado)
+        # o vía UI primer login.
+        ${pkgs.coreutils}/bin/install -d -m 0750 -o deluge -g media \
+          /var/lib/deluge/.config /var/lib/deluge/.config/deluge
+        ${pkgs.coreutils}/bin/install -m 0600 -o deluge -g media /dev/null \
+          /var/lib/deluge/.config/deluge/auth
+        printf 'localclient:%s:10\n' "$pass" > /var/lib/deluge/.config/deluge/auth
       '';
     };
 
