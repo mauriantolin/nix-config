@@ -118,6 +118,19 @@ in
     # Scope: sólo containers en ese bridge, no tráfico externo.
     networking.firewall.trustedInterfaces = [ "podman0" ];
 
+    # Phase 8 — `--network=host` + Next.js bind a *:3000 (HOSTNAME env no-op en
+    # esta versión) → puerto :3000 quedaría reachable vía tailscale0 (trusted iface)
+    # bypass-eando oauth2-proxy. Drop explícito para cualquier iface != lo, lo
+    # que mantiene oauth2-proxy(:4186)→127.0.0.1:3000 funcional pero corta acceso
+    # directo desde tailnet/LAN. Insertado al top de nixos-fw para evitar que el
+    # ACCEPT de tailscale0 se aplique primero.
+    networking.firewall.extraCommands = ''
+      iptables -I nixos-fw '!' -i lo -p tcp --dport ${toString cfg.port} -j DROP
+    '';
+    networking.firewall.extraStopCommands = ''
+      iptables -D nixos-fw '!' -i lo -p tcp --dport ${toString cfg.port} -j DROP 2>/dev/null || true
+    '';
+
     # ── Phase 8 — Widget secrets bootstrap ───────────────────────────────────
     # Extrae API keys/passes de servicios on-host y los expone como
     # HOMEPAGE_VAR_* en /run/homepage-secrets/env (root:root 0400).
