@@ -147,7 +147,11 @@ in
       settings = {
         hostname = cfg.hostname;
         hostname-strict = true;
-        proxy = "edge";        # confía en X-Forwarded-* del CF Tunnel + Tailscale Serve
+        # Keycloak 26 removió `proxy = "edge"`. Replacement oficial:
+        # `proxy-headers = "xforwarded"` para que confíe en X-Forwarded-Proto/Host/For
+        # del CF Tunnel (cloudflared inyecta ese set, no la cabecera RFC-7239 Forwarded).
+        # Ref: https://www.keycloak.org/docs/latest/upgrading/index.html#proxy-option-removed
+        proxy-headers = "xforwarded";
         http-enabled = true;
         http-host = "127.0.0.1";
         http-port = cfg.port;
