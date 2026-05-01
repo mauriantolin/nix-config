@@ -41,9 +41,13 @@ in
       serviceConfig = {
         DynamicUser = lib.mkForce false;
         PrivateUsers = lib.mkForce false;
-        StateDirectory = lib.mkForce "";   # dataset ZFS ya montado; no dejar que systemd lo gestione
+        # StateDirectory vacío: dataset ZFS ya montado; no dejar que systemd lo gestione ni lo renombre.
+        StateDirectory = lib.mkForce "";
         User = "uptime-kuma";
         Group = "uptime-kuma";
+        # ProtectSystem=strict bloquea escrituras a /var/lib sin StateDirectory.
+        # Habilitamos acceso explícito al dataset ZFS.
+        ReadWritePaths = [ "/var/lib/uptime-kuma" ];
       };
     };
 
