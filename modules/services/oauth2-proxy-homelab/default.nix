@@ -172,23 +172,24 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Cookie secret compartido — registrado una vez.
-    age.secrets.oauth2ProxyCookieSecret = {
-      file = cfg.cookieSecretFile;
-      owner = "root";
-      group = "root";
-      mode = "0400";
-    };
-
-    # Un age.secrets entry por instancia (key disambiguada por name).
-    age.secrets = lib.mapAttrs'
+    # Cookie secret compartido + un secret por instancia. Los mergeamos en un
+    # único `age.secrets = ...` porque NixOS no permite redefinir el mismo
+    # atributo top-level dos veces dentro del mismo módulo (`already defined`).
+    age.secrets = {
+      oauth2ProxyCookieSecret = {
+        file = cfg.cookieSecretFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+    } // (lib.mapAttrs'
       (name: inst: lib.nameValuePair "oauth2ProxyClientSecret_${name}" {
         file = inst.clientSecretFile;
         owner = "root";
         group = "root";
         mode = "0400";
       })
-      cfg.instances;
+      cfg.instances);
 
     # Una systemd service por instancia.
     systemd.services = lib.mapAttrs' mkInstance cfg.instances;
