@@ -28,6 +28,8 @@
     ../../../services/jellyseerr-homelab
     # D.3 — SSO (Keycloak Quarkus, postgres-shared backend, dataset encriptado)
     ../../../services/keycloak-homelab
+    # D.4b — oauth2-proxy multi-instancia (front-door SSO para servicios sin OIDC nativo)
+    ../../../services/oauth2-proxy-homelab
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -110,6 +112,15 @@
       # D.3 — Keycloak SSO (hostname-strict=true exige Host: auth.mauricioantolin.com,
       # por eso NO va por tailscale-serve con magic hostname).
       "auth.mauricioantolin.com" = "http://127.0.0.1:8180";
+      # D.4b — oauth2-proxy front-door para servicios sin OIDC nativo. Apunta al
+      # listenPort de cada instancia (4181-4188), no al backend; oauth2-proxy
+      # autentica y luego proxea internamente al loopback del servicio real.
+      "sonarr.mauricioantolin.com"   = "http://127.0.0.1:4181";
+      "radarr.mauricioantolin.com"   = "http://127.0.0.1:4182";
+      "prowlarr.mauricioantolin.com" = "http://127.0.0.1:4183";
+      "bazarr.mauricioantolin.com"   = "http://127.0.0.1:4184";
+      "home.mauricioantolin.com"     = "http://127.0.0.1:4186";
+      "uptime.mauricioantolin.com"   = "http://127.0.0.1:4187";
     };
   };
 
@@ -176,28 +187,29 @@
     enable = true;
     magicHostname = "home-server.tailee5654.ts.net";
     handlers = {
-      # Homepage en :443/ (default)
-      homepage = { Proxy = "http://127.0.0.1:3000"; };
-      # Uptime Kuma en puerto dedicado :8443 (su frontend rompe bajo subpath:
-      # redirige a /dashboard absoluto. Plan B documentado en spec C.1).
-      uptime = { Proxy = "http://127.0.0.1:3001"; Port = 8443; };
-      # E.3 — Grafana en :3443/ (root path, puerto dedicado).
-      # Subpath /grafana/ producía redirect loop con TLS-termination de Tailscale
-      # Serve. Mismo patrón Plan-B que Kuma. URL: https://...:3443/.
+      # D.4b — homepage detrás de oauth2-proxy (puerto 4186), no backend directo.
+      homepage = { Proxy = "http://127.0.0.1:4186"; };
+      # D.4b — Uptime Kuma detrás de oauth2-proxy (puerto 4187). Mantiene puerto
+      # externo dedicado :8443 (Kuma rompe bajo subpath).
+      uptime = { Proxy = "http://127.0.0.1:4187"; Port = 8443; };
+      # E.3 — Grafana en :3443/ (root path, puerto dedicado). NO va detrás de
+      # oauth2-proxy: tiene OIDC nativo (auth.generic_oauth — D.4a).
       grafana = { Proxy = "http://127.0.0.1:3030"; Port = 3443; };
-      # E.3 — Prometheus en :9443/ (uso interno; rara vez se accede directo,
-      # pero útil para debug de scrape targets sin SSH).
-      prometheus = { Proxy = "http://127.0.0.1:9090"; Port = 9443; };
+      # D.4b — Prometheus detrás de oauth2-proxy (puerto 4188).
+      prometheus = { Proxy = "http://127.0.0.1:4188"; Port = 9443; };
       # E.2 — Tailscale Serve binds en la IP del nodo en el tailnet (ej: 100.65.79.114).
       # Si los servicios bindean 0.0.0.0:<puerto> (jellyfin, *arr), colisionan con
       # ese mismo puerto en la IP tailnet. Solución: external port distinto del backend.
       # Patrón: external = backend + 100.
       jellyfin = { Proxy = "http://127.0.0.1:8096"; Port = 8196; };
-      deluge   = { Proxy = "http://127.0.0.1:8112"; Port = 8212; };
-      sonarr   = { Proxy = "http://127.0.0.1:8989"; Port = 9089; };
-      radarr   = { Proxy = "http://127.0.0.1:7878"; Port = 7978; };
-      prowlarr = { Proxy = "http://127.0.0.1:9696"; Port = 9796; };
-      bazarr   = { Proxy = "http://127.0.0.1:6767"; Port = 6867; };
+      # D.4b — *arr/deluge detrás de oauth2-proxy. External port mantiene patrón
+      # backend+100 para preservar bookmarks; Proxy ahora apunta al listenPort de
+      # oauth2-proxy (4181-4185) en vez de al backend directo.
+      deluge   = { Proxy = "http://127.0.0.1:4185"; Port = 8212; };
+      sonarr   = { Proxy = "http://127.0.0.1:4181"; Port = 9089; };
+      radarr   = { Proxy = "http://127.0.0.1:4182"; Port = 7978; };
+      prowlarr = { Proxy = "http://127.0.0.1:4183"; Port = 9796; };
+      bazarr   = { Proxy = "http://127.0.0.1:4184"; Port = 6867; };
     };
   };
 
@@ -351,6 +363,84 @@
       enable = true;
       username = "admin@mauricioantolin.com";
       # `from` default = "auth@mauricioantolin.com" (alias Send-As ya creado).
+    };
+  };
+
+  # ── D.4b — oauth2-proxy multi-instancia ─────────────────────────────────────
+  # Una instancia por servicio sin OIDC nativo. listenPort 4181-4188 (loopback);
+  # tailscale-serve y cloudflared apuntan al listenPort, no al backend directo.
+  # whitelistDomains incluye ambos hosts (CF y TS Serve) para permitir redirect
+  # OIDC vuelva al host de origen tras login.
+  services.oauth2-proxy-homelab = {
+    enable = true;
+    cookieSecretFile = "${inputs.secrets}/secrets/oauth2-proxy-cookie-secret.age";
+    instances = {
+      sonarr = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-sonarr.age";
+        listenPort = 4181;
+        upstream   = "http://127.0.0.1:8989";
+        whitelistDomains = [
+          "home-server.tailee5654.ts.net:9089"
+          "sonarr.mauricioantolin.com"
+        ];
+      };
+      radarr = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-radarr.age";
+        listenPort = 4182;
+        upstream   = "http://127.0.0.1:7878";
+        whitelistDomains = [
+          "home-server.tailee5654.ts.net:7978"
+          "radarr.mauricioantolin.com"
+        ];
+      };
+      prowlarr = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-prowlarr.age";
+        listenPort = 4183;
+        upstream   = "http://127.0.0.1:9696";
+        whitelistDomains = [
+          "home-server.tailee5654.ts.net:9796"
+          "prowlarr.mauricioantolin.com"
+        ];
+      };
+      bazarr = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-bazarr.age";
+        listenPort = 4184;
+        upstream   = "http://127.0.0.1:6767";
+        whitelistDomains = [
+          "home-server.tailee5654.ts.net:6867"
+          "bazarr.mauricioantolin.com"
+        ];
+      };
+      deluge = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-deluge.age";
+        listenPort = 4185;
+        upstream   = "http://127.0.0.1:8112";
+        whitelistDomains = [ "home-server.tailee5654.ts.net:8212" ];
+      };
+      homepage = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-homepage.age";
+        listenPort = 4186;
+        upstream   = "http://127.0.0.1:3000";
+        whitelistDomains = [
+          "home-server.tailee5654.ts.net"
+          "home.mauricioantolin.com"
+        ];
+      };
+      kuma = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-kuma.age";
+        listenPort = 4187;
+        upstream   = "http://127.0.0.1:3001";
+        whitelistDomains = [
+          "home-server.tailee5654.ts.net:8443"
+          "uptime.mauricioantolin.com"
+        ];
+      };
+      prometheus = {
+        clientSecretFile = "${inputs.secrets}/secrets/oidc-client-oauth2proxy-prometheus.age";
+        listenPort = 4188;
+        upstream   = "http://127.0.0.1:9090";
+        whitelistDomains = [ "home-server.tailee5654.ts.net:9443" ];
+      };
     };
   };
 

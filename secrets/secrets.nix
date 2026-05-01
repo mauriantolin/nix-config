@@ -57,6 +57,10 @@ in
   "oidc-client-oauth2proxy-kuma.age".publicKeys = users ++ systems;
   "oidc-client-oauth2proxy-prometheus.age".publicKeys = users ++ systems;
 
+  # Fase D.4b — cookie-secret compartido por todas las instancias oauth2-proxy
+  # (44-byte base64 random — usado para firmar/cifrar cookies de sesión).
+  "oauth2-proxy-cookie-secret.age".publicKeys = users ++ systems;
+
   # Fase D.4b — break-glass localadmin passwords para servicios *arr cuando
   # SSO se rompa (autenticación interna queda como fallback).
   "sonarr-localadmin-pass.age".publicKeys = users ++ systems;
