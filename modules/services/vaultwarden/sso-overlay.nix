@@ -21,7 +21,7 @@ final: prev: {
 
     # cargoDeps se re-deriva del nuevo Cargo.lock. Reemplazar por el hash real
     # tras el primer build (el error de nix-build dice "got: sha256-...").
-    cargoHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    cargoHash = "";
 
     env = (old.env or { }) // { VW_VERSION = version; };
 
