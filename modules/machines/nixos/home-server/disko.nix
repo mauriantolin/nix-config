@@ -112,6 +112,34 @@
               refreservation = "2G";
             };
           };
+          "services" = {
+            type = "zfs_fs";
+            options = {
+              mountpoint = "none";
+              "com.sun:auto-snapshot" = "false";
+            };
+          };
+          "services/vaultwarden" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/vaultwarden";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "16K";
+            };
+          };
+          "services/uptime-kuma" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/uptime-kuma";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "16K";
+            };
+          };
+          "services/homepage" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/homepage";
+            options.mountpoint = "legacy";
+          };
         };
       };
 
