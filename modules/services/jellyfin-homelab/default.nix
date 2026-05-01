@@ -380,6 +380,8 @@ in
         # POST /sso/OID/Add/<provider> con la config completa.
         # AdminRoles=[] significa: ningún rol KC se mapea a admin de Jellyfin
         # automáticamente (mauri queda admin via login local).
+        # Schema del OidConfig: ver upstream
+        # github.com/9p4/jellyfin-plugin-sso/blob/v4.0.0.3/SSO-Auth/Config/PluginConfiguration.cs
         BODY=$(jq -n \
           --arg endpoint "$AUTHORITY" \
           --arg clientid "$CLIENT_ID" \
@@ -394,13 +396,18 @@ in
             EnableAllFolders: true,
             EnabledFolders: [],
             EnableFolderRoles: false,
+            EnableLiveTvRoles: false,
+            EnableLiveTv: true,
+            EnableLiveTvManagement: false,
             FolderRoleMapping: [],
             Roles: [],
             AdminRoles: [],
+            LiveTvRoles: [],
+            LiveTvManagementRoles: [],
             RoleClaim: "",
             DefaultUsernameClaim: "preferred_username",
             DefaultProvider: "",
-            CanonicalLinks: []
+            NewPath: true
           }')
 
         curl -sf -X POST "$JF/sso/OID/Add/$PROVIDER" \
