@@ -23,9 +23,12 @@ deploy:
 	fi
 	sudo nixos-rebuild switch --flake .#home-server
 
-# Rollback a la generación anterior (en caliente)
+# Rollback a la generación anterior (en caliente).
+# `nixos-rebuild switch --rollback` asume NIX_PATH legacy (roto en sistemas flake-only),
+# por eso hacemos el swap de profile + switch-to-configuration a mano.
 rollback:
-	sudo nixos-rebuild switch --rollback
+	sudo nix-env --profile /nix/var/nix/profiles/system --rollback
+	sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
 
 # Smoke test post-install (corre desde Atos PC)
 smoke:

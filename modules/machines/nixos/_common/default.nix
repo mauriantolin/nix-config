@@ -47,6 +47,17 @@
     };
   };
 
+  # SSH outbound: que root use el host key para github.com, así `nixos-rebuild switch`
+  # puede fetch-ear el input privado `secrets` (git+ssh://git@github.com/…/nix-private)
+  # sin necesidad de GIT_SSH_COMMAND manual en cada deploy.
+  # El pubkey del host está registrado como deploy key read-only en nix-private.
+  programs.ssh.extraConfig = ''
+    Host github.com
+      IdentityFile /etc/ssh/ssh_host_ed25519_key
+      IdentitiesOnly yes
+      StrictHostKeyChecking accept-new
+  '';
+
   # === Firewall ===
   networking.firewall = {
     enable = true;
