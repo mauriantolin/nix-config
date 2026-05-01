@@ -74,6 +74,17 @@ smoke-e2b:
 smoke-e2c:
 	bash bin/smoke-test-e2c.sh
 
+# Smoke test Fase E.2d — Jellyseerr + CF Tunnel ingress
+smoke-e2d:
+	bash bin/smoke-test-e2d.sh
+
+# Smoke test Fase E.2 completo (a+b+c+d)
+smoke-e2:
+	bash bin/smoke-test-e2a.sh && \
+	bash bin/smoke-test-e2b.sh && \
+	bash bin/smoke-test-e2c.sh && \
+	bash bin/smoke-test-e2d.sh
+
 # Shortcut diagnóstico fail2ban
 fail2ban-status:
 	ssh mauri@home-server 'sudo fail2ban-client status'
