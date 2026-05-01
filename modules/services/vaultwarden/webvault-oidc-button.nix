@@ -13,7 +13,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   src = fetchurl {
     url = "https://github.com/Timshel/oidc_web_vault/releases/download/v${finalAttrs.version}/oidc_button_web_vault.tar.gz";
-    hash = "sha256-tOS0mtd3Ww7mAtSEHUjqQwzvgY6IZQxuAmK+H0xAKKw=";
+    hash = "sha256-7zvFgdt5d0CWswoNclZ/rEw6kFYok+psZy3v+STDMqY=";
   };
 
   dontConfigure = true;
