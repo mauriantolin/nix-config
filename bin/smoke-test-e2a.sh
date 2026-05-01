@@ -66,14 +66,11 @@ check "9 jellyfin-bootstrap.service ran clean (admin user creado)" ssh "$HOST" "
   sudo systemctl is-active jellyfin-bootstrap.service | grep -q active && \
   sudo journalctl -u jellyfin-bootstrap --no-pager -n 50 | grep -qE 'admin user|wizard already completed'"
 
-check "10 3 libraries provisionadas (Movies/TV Shows/Music)" ssh "$HOST" '
-  PASS=$(sudo cat /run/agenix/jellyfinAdminPass)
-  TOKEN=$(curl -sf -X POST http://127.0.0.1:8096/Users/AuthenticateByName \
-    -H "Content-Type: application/json" \
-    -H "Authorization: MediaBrowser Client=\"smoke\", Device=\"smoke\", DeviceId=\"smoke\", Version=\"1\"" \
-    -d "{\"Username\":\"mauri\",\"Pw\":\"$PASS\"}" | jq -r .AccessToken)
-  [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ] || exit 1
-  COUNT=$(curl -sf http://127.0.0.1:8096/Library/VirtualFolders -H "X-Emby-Token: $TOKEN" | jq "length")
+check "10 ≥3 libraries provisionadas (filesystem check sin auth)" ssh "$HOST" '
+  # Cada library en Jellyfin es un dir bajo /var/lib/jellyfin/root/default.
+  # Filesystem check evita necesitar admin pass en agenix; nombres son los
+  # que el user haya elegido en el wizard (Movies/Películas, etc).
+  COUNT=$(sudo ls -1 /var/lib/jellyfin/root/default 2>/dev/null | wc -l)
   [ "$COUNT" -ge 3 ]'
 
 echo
