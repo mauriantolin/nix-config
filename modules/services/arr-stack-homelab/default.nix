@@ -170,8 +170,10 @@ in
         LoadCredential = "deluge-pass:${config.age.secrets.delugeWebPass.path}";
       };
       script = ''
-        # Best-effort: cada step API-side puede fallar (schema mismatch entre
-        # *arr versions) sin romper el resto. set -u para safety pero sin -e.
+        # NixOS prepende `set -e` a serviceConfig.script — lo disable explícito.
+        # Bootstrap es best-effort: cada step API-side puede fallar (schema mismatch
+        # entre *arr versions) sin romper el deploy.
+        set +e
         set -uo pipefail
 
         DELUGE_PASS=$(cat "$CREDENTIALS_DIRECTORY/deluge-pass")
