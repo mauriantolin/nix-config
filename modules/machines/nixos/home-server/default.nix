@@ -118,7 +118,8 @@
   services.vaultwarden-homelab = {
     enable = true;
     domain = "vault.mauricioantolin.com";
-    allowSignups = false; # cerrado tras bootstrap
+    allowSignups = false; # cerrado tras bootstrap (con SSO se sobreescribe a true)
+    sso.enable = true;    # D.4a — fork Timshel/vaultwarden + KC realm homelab
   };
 
   services.fail2ban-jails-homelab = {
