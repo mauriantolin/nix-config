@@ -161,7 +161,7 @@ in
           "paperless-web.service"
           "grafana.service"
         ];
-        path = with pkgs; [ curl jq coreutils gnugrep gawk libxml2 ];
+        path = with pkgs; [ curl jq coreutils gnugrep gawk libxml2 diffutils ];
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
@@ -244,7 +244,10 @@ in
           if [ ! -f "$OUT" ] || ! cmp -s "$NEW" "$OUT"; then
             mv -f "$NEW" "$OUT"
             # Restart pickup new env (podman bake env at container creation).
-            systemctl try-restart podman-homepage.service 2>/dev/null || true
+            # --no-block: bootstrap is `before` podman-homepage; un try-restart
+            # síncrono crearía deadlock (bootstrap espera a podman-homepage que
+            # espera a bootstrap). Con --no-block sólo encolá el restart.
+            systemctl --no-block try-restart podman-homepage.service 2>/dev/null || true
           else
             rm -f "$NEW"
           fi
