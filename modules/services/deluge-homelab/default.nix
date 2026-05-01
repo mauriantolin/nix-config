@@ -149,11 +149,12 @@ in
     # Generate authFile from agenix secret. Deluge format: user:pass:level\n
     # Level 10 = admin (full access). Web UI usa este file para auth.
     systemd.services.deluge-auth-prepare = {
-      description = "Render deluge authFile from agenix";
+      description = "Render deluge authFile + web.conf password from agenix";
       after = [ "agenix.service" "deluge-storage-prepare.service" ];
       requires = [ "deluge-storage-prepare.service" ];
       before = [ "deluged.service" "delugeweb.service" ];
       wantedBy = [ "deluged.service" "delugeweb.service" ];
+      path = with pkgs; [ coreutils openssl ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
@@ -161,24 +162,55 @@ in
       script = ''
         umask 077
         # Group del deluge user es "media" (services.deluge.group); no existe "deluge" group.
-        ${pkgs.coreutils}/bin/install -d -m 0750 -o deluge -g media /run/deluge
+        install -d -m 0750 -o deluge -g media /run/deluge
         pass=$(cat ${config.age.secrets.delugeWebPass.path})
 
-        # /run/deluge/auth: usado por deluged (RPC daemon auth, cfg.authFile points here)
-        ${pkgs.coreutils}/bin/install -m 0400 -o deluge -g media /dev/null /run/deluge/auth
+        # ── /run/deluge/auth: deluged daemon RPC auth (cfg.authFile apunta acá)
+        install -m 0400 -o deluge -g media /dev/null /run/deluge/auth
         printf '%s:%s:10\n' "${cfg.webUser}" "$pass" > /run/deluge/auth
-        ${pkgs.coreutils}/bin/chown deluge:media /run/deluge/auth
-        ${pkgs.coreutils}/bin/chmod 0400 /run/deluge/auth
+        chown deluge:media /run/deluge/auth
+        chmod 0400 /run/deluge/auth
 
-        # /var/lib/deluge/.config/deluge/auth: usado por delugeweb (localclient handshake).
-        # Si no existe, deluge-web intenta crearlo y falla con FileNotFoundError.
-        # Mismo contenido — el web UI password se setea via cfg.web (setting separado)
-        # o vía UI primer login.
-        ${pkgs.coreutils}/bin/install -d -m 0750 -o deluge -g media \
+        # ── /var/lib/deluge/.config/deluge/auth: localclient handshake de delugeweb
+        install -d -m 0750 -o deluge -g media \
           /var/lib/deluge/.config /var/lib/deluge/.config/deluge
-        ${pkgs.coreutils}/bin/install -m 0600 -o deluge -g media /dev/null \
+        install -m 0600 -o deluge -g media /dev/null \
           /var/lib/deluge/.config/deluge/auth
         printf 'localclient:%s:10\n' "$pass" > /var/lib/deluge/.config/deluge/auth
+
+        # ── /var/lib/deluge/.config/deluge/web.conf: web UI password (sha1+salt).
+        # Sin esto, web UI usa default "deluge" → *arr no se puede conectar.
+        # Idempotente: solo si web.conf no existe (primer deploy). Si existe, respetar.
+        WEB_CONF=/var/lib/deluge/.config/deluge/web.conf
+        if [ ! -f "$WEB_CONF" ]; then
+          SALT=$(openssl rand -hex 32)
+          PWD_SHA1=$(printf '%s%s' "$SALT" "$pass" | openssl sha1 | awk '{print $2}')
+          # Format: dos JSON objects consecutivos (file/format header + content).
+          # Default web port=8112; pwd_sha1+pwd_salt es lo que valida login.
+          install -m 0600 -o deluge -g media /dev/null "$WEB_CONF"
+          cat > "$WEB_CONF" <<JSON
+{
+    "file": 2,
+    "format": 1
+}{
+    "pwd_sha1": "$PWD_SHA1",
+    "pwd_salt": "$SALT",
+    "session_timeout": 3600,
+    "default_daemon": "",
+    "show_session_speed": false,
+    "show_sidebar": true,
+    "sidebar_show_zero": false,
+    "sidebar_show_trackers": true,
+    "sidebar_multiple_filters": true,
+    "language": "",
+    "theme": "gray",
+    "first_login": false
+}
+JSON
+          chown deluge:media "$WEB_CONF"
+          chmod 0600 "$WEB_CONF"
+          echo "[deluge-auth-prepare] web.conf renderizado con password de agenix"
+        fi
       '';
     };
 
