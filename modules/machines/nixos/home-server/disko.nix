@@ -187,6 +187,12 @@
               "com.sun:auto-snapshot" = "false";  # cache, no snapshot
             };
           };
+          # E.2b — Deluge state
+          "services/deluge" = {
+            type = "zfs_fs";
+            mountpoint = "/var/lib/deluge";
+            options.mountpoint = "legacy";
+          };
         };
       };
 
@@ -242,6 +248,15 @@
             options = {
               mountpoint = "legacy";
               recordsize = "1M";
+            };
+          };
+          # E.2b — Deluge downloads (incomplete + complete + torrent files)
+          "downloads" = {
+            type = "zfs_fs";
+            mountpoint = "/srv/downloads";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";   # videos grandes
             };
           };
           "backups" = {
