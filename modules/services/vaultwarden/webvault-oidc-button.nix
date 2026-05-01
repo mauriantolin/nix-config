@@ -21,19 +21,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   installPhase = ''
     runHook preInstall
-    mkdir -p $out/share/vaultwarden
-    # El tarball ya contiene el dir `web-vault/`. Renombramos a `vault/` para
-    # cumplir el contract del módulo NixOS (services.vaultwarden.config.WEB_VAULT_FOLDER
-    # apunta a $out/share/vaultwarden/vault).
-    if [ -d web-vault ]; then
-      mv web-vault $out/share/vaultwarden/vault
-    elif [ -d vault ]; then
-      mv vault $out/share/vaultwarden/vault
-    else
-      echo "ERROR: tarball estructura inesperada" >&2
-      ls -la
-      exit 1
-    fi
+    # El tarball extrae sus archivos directamente al cwd (sin wrapper dir):
+    # index.html + assets/ + locales/ + scripts/ etc. Movemos TODO a vault/.
+    install -d $out/share/vaultwarden
+    cp -R "$PWD" $out/share/vaultwarden/vault
     runHook postInstall
   '';
 
