@@ -54,6 +54,10 @@ smoke-c2:
 smoke-d1:
 	bash bin/smoke-test-d1.sh
 
+# Smoke test Fase D.3 — Keycloak SSO (Quarkus, postgres-shared, encrypted ZFS)
+smoke-d3:
+	bash bin/smoke-test-d3.sh
+
 # Smoke test Fase E.1 — postgres compartido + paperless + radicale
 smoke-e1:
 	bash bin/smoke-test-e1.sh

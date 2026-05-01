@@ -26,6 +26,8 @@
     ../../../services/deluge-homelab
     ../../../services/arr-stack-homelab
     ../../../services/jellyseerr-homelab
+    # D.3 — SSO (Keycloak Quarkus, postgres-shared backend, dataset encriptado)
+    ../../../services/keycloak-homelab
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
@@ -105,6 +107,9 @@
       "cal.mauricioantolin.com" = "http://127.0.0.1:5232";
       # E.2d — Jellyseerr UI pública (auth interna via Jellyfin)
       "requests.mauricioantolin.com" = "http://127.0.0.1:5055";
+      # D.3 — Keycloak SSO (hostname-strict=true exige Host: auth.mauricioantolin.com,
+      # por eso NO va por tailscale-serve con magic hostname).
+      "auth.mauricioantolin.com" = "http://127.0.0.1:8180";
     };
   };
 
@@ -323,6 +328,22 @@
     # en versiones nuevas. Bootstrap manual desde UI (login con Jellyfin admin →
     # Sonarr/Radarr settings con API keys que están en /var/lib/{sonarr,radarr}/config.xml).
     autoBootstrap = false;
+  };
+
+  # ── D.3 — Keycloak SSO ──────────────────────────────────────────────────────
+  # Quarkus distro detrás de CF Tunnel; backend postgres-shared, dataset cifrado.
+  # SMTP arranca deshabilitado: hace falta el email del Workspace user (donde
+  # se generó el App Password) para activarlo. Una vez confirmado, flip a:
+  #   smtp = { enable = true; username = "<workspace-user>@mauricioantolin.com"; };
+  # El password ya está en agenix (keycloak-smtp-pass.age).
+  services.keycloak-homelab = {
+    enable = true;
+    smtp = {
+      enable = false;
+      # Placeholder eval-safe — el módulo lee cfg.smtp.username incluso con
+      # smtp.enable=false (para popular la env var SMTP_USER del bootstrap).
+      username = "PENDING_WORKSPACE_USER_EMAIL";
+    };
   };
 
   networking = {
