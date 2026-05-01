@@ -193,7 +193,12 @@
             mountpoint = "/var/lib/deluge";
             options.mountpoint = "legacy";
           };
-          # E.2c — *arr stack (SQLite DBs en SSD)
+          # E.2c — *arr stack (SQLite DBs en SSD).
+          # Sonarr/Radarr/Bazarr usan static user (nuestro override `group = "media"`
+          # fuerza al módulo a no usar DynamicUser). Prowlarr quedó DynamicUser=yes
+          # → no podemos pre-crear /var/lib/prowlarr (systemd lo quiere como symlink
+          # a /var/lib/private/prowlarr). Por eso prowlarr no tiene dataset dedicado;
+          # vive en rpool/var (config.xml + db = ~5 MB, no necesita tuning).
           "services/sonarr" = {
             type = "zfs_fs";
             mountpoint = "/var/lib/sonarr";
@@ -204,22 +209,12 @@
             mountpoint = "/var/lib/radarr";
             options.mountpoint = "legacy";
           };
-          "services/prowlarr" = {
-            type = "zfs_fs";
-            mountpoint = "/var/lib/prowlarr";
-            options.mountpoint = "legacy";
-          };
           "services/bazarr" = {
             type = "zfs_fs";
             mountpoint = "/var/lib/bazarr";
             options.mountpoint = "legacy";
           };
-          # E.2d — Jellyseerr
-          "services/jellyseerr" = {
-            type = "zfs_fs";
-            mountpoint = "/var/lib/jellyseerr";
-            options.mountpoint = "legacy";
-          };
+          # E.2d — Jellyseerr también es DynamicUser=yes → sin dataset dedicado.
         };
       };
 

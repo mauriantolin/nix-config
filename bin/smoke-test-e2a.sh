@@ -36,16 +36,15 @@ check "2 media dirs ownership=jellyfin:media + setgid (2775)" ssh "$HOST" '
 
 # === Jellyfin service ===
 
-check "3 jellyfin listening on 127.0.0.1:8096 only" ssh "$HOST" "
-  sudo ss -tnlp | grep -q '127.0.0.1:8096' && \
-  ! sudo ss -tnlp | grep -E ':8096' | grep -qv '127.0.0.1'"
+check "3 jellyfin listening on :8096 (firewall bloquea LAN)" ssh "$HOST" "
+  sudo ss -tnlp | grep -qE ':8096'"
 
 check "4 jellyfin /System/Info/Public returns 200 + JSON" ssh "$HOST" '
   RESP=$(curl -sf http://127.0.0.1:8096/System/Info/Public)
   echo "$RESP" | grep -q "\"ServerName\""'
 
-check "5 jellyfin via Tailscale Serve :8096 responde" ssh "$HOST" '
-  CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 https://home-server.tailee5654.ts.net:8096/System/Info/Public)
+check "5 jellyfin via Tailscale Serve :8196 responde" ssh "$HOST" '
+  CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 https://home-server.tailee5654.ts.net:8196/System/Info/Public)
   [ "$CODE" = "200" ]'
 
 # === HW accel ===

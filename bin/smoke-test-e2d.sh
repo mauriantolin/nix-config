@@ -19,8 +19,8 @@ check() {
 
 echo "=== Smoke test Fase E.2d ==="
 
-check "1 dataset E.2d mounted (jellyseerr)" ssh "$HOST" "
-  mountpoint -q /var/lib/jellyseerr"
+check "1 jellyseerr state dir existe (DynamicUser, sin dataset)" ssh "$HOST" "
+  test -L /var/lib/jellyseerr -o -d /var/lib/jellyseerr"
 
 check "2 jellyseerr active" ssh "$HOST" '
   sudo systemctl is-active jellyseerr | grep -q "^active$"'

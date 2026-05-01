@@ -19,10 +19,9 @@ check() {
 
 echo "=== Smoke test Fase E.2c ==="
 
-check "1 datasets E.2c mounted (sonarr/radarr/prowlarr/bazarr)" ssh "$HOST" "
+check "1 datasets E.2c mounted (sonarr/radarr/bazarr — prowlarr en rpool/var)" ssh "$HOST" "
   mountpoint -q /var/lib/sonarr && \
   mountpoint -q /var/lib/radarr && \
-  mountpoint -q /var/lib/prowlarr && \
   mountpoint -q /var/lib/bazarr"
 
 check "2 services activos" ssh "$HOST" '
@@ -30,14 +29,14 @@ check "2 services activos" ssh "$HOST" '
     sudo systemctl is-active "$s" | grep -q "^active$" || { echo "FAIL: $s no active"; exit 1; }
   done'
 
-check "3 ownership=<svc>:media + 0750 en cada dataDir" ssh "$HOST" '
-  for s in sonarr radarr prowlarr bazarr; do
+check "3 ownership=<svc>:media + 0750 (sonarr/radarr/bazarr)" ssh "$HOST" '
+  for s in sonarr radarr bazarr; do
     perms=$(stat -c "%a %U %G" /var/lib/$s)
     [ "$perms" = "750 $s media" ] || { echo "FAIL: /var/lib/$s → $perms"; exit 1; }
   done'
 
-check "4 cada user *arr en grupo media" ssh "$HOST" '
-  for u in sonarr radarr prowlarr bazarr; do
+check "4 sonarr/radarr/bazarr users en grupo media" ssh "$HOST" '
+  for u in sonarr radarr bazarr; do
     groups "$u" | grep -q media || { echo "FAIL: $u no en media"; exit 1; }
   done'
 

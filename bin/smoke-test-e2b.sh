@@ -63,8 +63,8 @@ check "11 deluge web auth file rendered" ssh "$HOST" "
   sudo test -r /run/deluge/auth && \
   sudo grep -q '^mauri:.*:10\$' /run/deluge/auth"
 
-check "12 deluge via Tailscale Serve :8112 responde" ssh "$HOST" '
-  CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 https://home-server.tailee5654.ts.net:8112/)
+check "12 deluge via Tailscale Serve :8212 responde" ssh "$HOST" '
+  CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 https://home-server.tailee5654.ts.net:8212/)
   [ "$CODE" = "200" ]'
 
 echo

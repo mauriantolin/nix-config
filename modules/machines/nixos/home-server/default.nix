@@ -53,13 +53,11 @@
       # E.2b — Deluge
       "rpool/services/deluge"          = { };
       "tank/downloads"                 = { recordsize = "1M"; };
-      # E.2c — *arr stack
+      # E.2c — *arr stack (sin prowlarr — DynamicUser=yes, vive en rpool/var)
       "rpool/services/sonarr"          = { };
       "rpool/services/radarr"          = { };
-      "rpool/services/prowlarr"        = { };
       "rpool/services/bazarr"          = { };
-      # E.2d — Jellyseerr
-      "rpool/services/jellyseerr"      = { };
+      # E.2d — Jellyseerr DynamicUser=yes → vive en rpool/var (sin dataset propio)
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
@@ -78,13 +76,10 @@
       # E.2b
       "var-lib-deluge.mount"
       "srv-downloads.mount"
-      # E.2c
+      # E.2c (prowlarr no — DynamicUser, sin dataset)
       "var-lib-sonarr.mount"
       "var-lib-radarr.mount"
-      "var-lib-prowlarr.mount"
       "var-lib-bazarr.mount"
-      # E.2d
-      "var-lib-jellyseerr.mount"
     ];
   };
 
@@ -177,15 +172,16 @@
       # E.3 — Prometheus en :9443/ (uso interno; rara vez se accede directo,
       # pero útil para debug de scrape targets sin SSH).
       prometheus = { Proxy = "http://127.0.0.1:9090"; Port = 9443; };
-      # E.2a — Jellyfin en su puerto nativo :8096 vía TS Serve
-      jellyfin = { Proxy = "http://127.0.0.1:8096"; Port = 8096; };
-      # E.2b — Deluge web UI vía TS Serve
-      deluge = { Proxy = "http://127.0.0.1:8112"; Port = 8112; };
-      # E.2c — *arr admin UIs (cada uno en su puerto nativo)
-      sonarr   = { Proxy = "http://127.0.0.1:8989"; Port = 8989; };
-      radarr   = { Proxy = "http://127.0.0.1:7878"; Port = 7878; };
-      prowlarr = { Proxy = "http://127.0.0.1:9696"; Port = 9696; };
-      bazarr   = { Proxy = "http://127.0.0.1:6767"; Port = 6767; };
+      # E.2 — Tailscale Serve binds en la IP del nodo en el tailnet (ej: 100.65.79.114).
+      # Si los servicios bindean 0.0.0.0:<puerto> (jellyfin, *arr), colisionan con
+      # ese mismo puerto en la IP tailnet. Solución: external port distinto del backend.
+      # Patrón: external = backend + 100.
+      jellyfin = { Proxy = "http://127.0.0.1:8096"; Port = 8196; };
+      deluge   = { Proxy = "http://127.0.0.1:8112"; Port = 8212; };
+      sonarr   = { Proxy = "http://127.0.0.1:8989"; Port = 9089; };
+      radarr   = { Proxy = "http://127.0.0.1:7878"; Port = 7978; };
+      prowlarr = { Proxy = "http://127.0.0.1:9696"; Port = 9796; };
+      bazarr   = { Proxy = "http://127.0.0.1:6767"; Port = 6867; };
     };
   };
 
@@ -391,19 +387,11 @@
     device = "rpool/services/radarr";
     fsType = "zfs";
   };
-  fileSystems."/var/lib/prowlarr" = {
-    device = "rpool/services/prowlarr";
-    fsType = "zfs";
-  };
   fileSystems."/var/lib/bazarr" = {
     device = "rpool/services/bazarr";
     fsType = "zfs";
   };
-  # E.2d — Jellyseerr
-  fileSystems."/var/lib/jellyseerr" = {
-    device = "rpool/services/jellyseerr";
-    fsType = "zfs";
-  };
+  # E.2d — Jellyseerr: DynamicUser=yes, sin dataset (rpool/var)
   # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared
   # escribe a /srv/backups/postgresql (subdir creado via tmpfiles).
 
