@@ -166,6 +166,16 @@ in
       initialAdminPassword = adminPlaceholder;
     };
 
+    # keycloak.service debe esperar a que postgres-set-passwords haya seteado
+    # el pass del user 'keycloak' (sino la primera connection falla con auth error
+    # y Quarkus aborta tras 5min de retries → unit failed). `wants` = soft-dep:
+    # si pg-set-passwords falla, keycloak.service entra en restart-loop hasta que
+    # se estabilice (mejor que cascade-fail con `requires`).
+    systemd.services.keycloak = {
+      after = [ "postgres-set-passwords.service" ];
+      wants = [ "postgres-set-passwords.service" ];
+    };
+
     # ── Bootstrap oneshot ───────────────────────────────────────────────────
     # 1. Espera /health/ready
     # 2. Login con placeholder admin pass

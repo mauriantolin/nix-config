@@ -89,17 +89,33 @@ in
     # SQL injection guard: usamos dollar-quoted strings de Postgres ($tag$...$tag$) —
     # el password va literal sin necesidad de escape de comillas. Tag `bspw` (bootstrap pw)
     # minimiza colisión; openssl rand -base64 nunca genera ese substring.
+    #
+    # Lección 2026-04-27 (D.3 deploy): cuando agregamos un nuevo DB/user (keycloak),
+    # ensureUsers se ejecuta en `postgresql-setup.service`, que arranca en paralelo a
+    # nosotros. Si nuestro ALTER USER corre primero, ERROR "role does not exist".
+    # Defensa:
+    #   1) `wants + after = postgresql-setup.service` — esperamos su completion.
+    #   2) Por cada user, polleamos pg_roles hasta 60s antes de ALTER (idempotente,
+    #      cubre incluso si setup-service no existe en otra distro).
+    #   3) Restart=on-failure por si todo falla → reintenta al estabilizarse postgres.
     systemd.services.postgres-set-passwords = {
       description = "Sync postgres user passwords from agenix";
-      after = [ "postgresql.service" ];
+      after = [ "postgresql.service" "postgresql-setup.service" ];
       requires = [ "postgresql.service" ];
+      wants = [ "postgresql-setup.service" ];
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
         User = "postgres";
+        Restart = "on-failure";
+        RestartSec = "10s";
         LoadCredential = lib.mapAttrsToList
           (db: spec: "${spec.user}:${toString spec.secretFile}")
           cfg.databases;
+      };
+      unitConfig = {
+        StartLimitIntervalSec = "120s";
+        StartLimitBurst = 6;
       };
       script = ''
         set -euo pipefail
@@ -112,6 +128,13 @@ in
 
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList (db: spec: ''
           # User ${spec.user} → DB ${db}
+          # Espera hasta 60s a que el role exista (race con postgresql-setup ensureUsers)
+          for i in $(seq 1 60); do
+            exists=$(${pkg}/bin/psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${spec.user}'" || true)
+            if [ "$exists" = "1" ]; then break; fi
+            echo "[wait] role ${spec.user} aún no existe ($i/60)"
+            sleep 1
+          done
           raw=$(cat "$CREDENTIALS_DIRECTORY/${spec.user}")
           ${pkg}/bin/psql -v ON_ERROR_STOP=1 -tAc \
             "ALTER USER \"${spec.user}\" WITH PASSWORD \$bspw\$$raw\$bspw\$;"
