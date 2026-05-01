@@ -25,8 +25,7 @@ rustPackages_1_94.rustPlatform.buildRustPackage rec {
     hash = "sha256-bEPwH0+b4cQTh1hNiiX2qvTNeRxxShm2JXNKNfn4xm8=";
   };
 
-  # Discovery mode: primer build dirá el real (copy got: sha256-...).
-  cargoHash = "";
+  cargoHash = "sha256-gcE3qfSVCk08haADyqOff4R0ekd9Q6RB59LUtow9Yi4=";
 
   env.VW_VERSION = version;
 
