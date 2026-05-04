@@ -72,4 +72,9 @@ in
   "bw-api-clientid.age".publicKeys = users ++ systems;
   "bw-api-clientsecret.age".publicKeys = users ++ systems;
   "bw-mauri-master.age".publicKeys = users ++ systems;
+
+  # R5 — Tailscale OAuth client (reemplaza tailscale-authkey persistente con
+  # bootstrap dinamico que genera authkeys one-shot via API en cada arranque).
+  "tailscale-oauth-client-id.age".publicKeys = users ++ systems;
+  "tailscale-oauth-client-secret.age".publicKeys = users ++ systems;
 }

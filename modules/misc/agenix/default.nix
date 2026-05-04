@@ -57,5 +57,20 @@ in
       owner = "root";
       group = "root";
     };
+
+    # R5 — Tailscale OAuth client. Consumidos por tailscaled-autoconnect-oauth.service
+    # (modules/misc/tailscale) via systemd LoadCredential, no via path directo.
+    tailscaleOauthClientId = {
+      file = "${secretsRoot}/tailscale-oauth-client-id.age";
+      mode = "0400";
+      owner = "root";
+      group = "root";
+    };
+    tailscaleOauthClientSecret = {
+      file = "${secretsRoot}/tailscale-oauth-client-secret.age";
+      mode = "0400";
+      owner = "root";
+      group = "root";
+    };
   };
 }
