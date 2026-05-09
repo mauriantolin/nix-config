@@ -10,7 +10,9 @@ let
   systems = [ homeServer ];
 in
 {
-  "tailscale-authkey.age".publicKeys = users ++ systems;
+  # tailscale-authkey.age REMOVED 2026-05-09: reemplazado por OAuth client (R5).
+  # Bootstrap dinamico via tailscale-oauth-client-{id,secret}.age genera
+  # authkeys one-shot al boot. Ver modules/misc/tailscale/default.nix.
   "mauri-hashed-password.age".publicKeys = users ++ systems;
   "hello-secret.age".publicKeys = users ++ systems;
 

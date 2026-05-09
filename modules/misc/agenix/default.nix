@@ -16,12 +16,8 @@ in
   system.activationScripts.agenixChown.deps = [ "users" "groups" ];
 
   age.secrets = {
-    tailscaleAuthKey = {
-      file = "${secretsRoot}/tailscale-authkey.age";
-      mode = "0400";
-      owner = "root";
-      group = "root";
-    };
+    # tailscaleAuthKey REMOVED 2026-05-09 -- reemplazado por OAuth bootstrap.
+    # Ver modules/misc/tailscale/default.nix + tailscaleOauthClient{Id,Secret} abajo.
     mauri-password = {
       file = "${secretsRoot}/mauri-hashed-password.age";
       mode = "0400";
