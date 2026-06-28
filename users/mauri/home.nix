@@ -20,6 +20,11 @@
     nodejs_22
     gh
     claude-code
+    # Toolchain para que el relay SSH de Orca compile node-pty/@parcel/watcher
+    gcc
+    gnumake
+    python3
+    binutils
   ];
 
   programs.git = {
