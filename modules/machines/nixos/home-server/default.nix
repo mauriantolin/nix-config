@@ -66,6 +66,12 @@
   # node prebuilt, etc.) en NixOS. Necesario para el toolchain per-proyecto de los repos.
   programs.nix-ld.enable = true;
 
+  # GitHub PATs para los MCP de los repos migrados (3 cuentas). owner=mauri → su shell
+  # los lee de /run/agenix y los exporta como GITHUB_PAT_* (ver users/mauri/home.nix).
+  age.secrets."github-pat-mauriantolin" = { file = "${inputs.secrets}/secrets/github-pat-mauriantolin.age"; owner = "mauri"; mode = "0400"; };
+  age.secrets."github-pat-casallab"     = { file = "${inputs.secrets}/secrets/github-pat-casallab.age";     owner = "mauri"; mode = "0400"; };
+  age.secrets."github-pat-tpcai"        = { file = "${inputs.secrets}/secrets/github-pat-tpcai.age";        owner = "mauri"; mode = "0400"; };
+
   # Acceso HTTPS dentro del tailnet (Tailscale ya autentica → sin oauth2-proxy).
   services.tailscale-serve-homelab = {
     enable = true;

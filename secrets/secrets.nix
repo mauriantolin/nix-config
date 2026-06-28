@@ -75,6 +75,12 @@ in
   "bw-api-clientsecret.age".publicKeys = users ++ systems;
   "bw-mauri-master.age".publicKeys = users ++ systems;
 
+  # Orca agent box — GitHub PATs (3 cuentas: mauriantolin / casal-laboratorio-dental / belencasal)
+  # para los MCP de GitHub de los repos migrados. Exportados al env de mauri.
+  "github-pat-mauriantolin.age".publicKeys = users ++ systems;
+  "github-pat-casallab.age".publicKeys = users ++ systems;
+  "github-pat-tpcai.age".publicKeys = users ++ systems;
+
   # R5 — Tailscale OAuth client (reemplaza tailscale-authkey persistente con
   # bootstrap dinamico que genera authkeys one-shot via API en cada arranque).
   "tailscale-oauth-client-id.age".publicKeys = users ++ systems;
