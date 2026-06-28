@@ -1,4 +1,8 @@
 - Apps:
+    - Immich:
+        icon: immich.png
+        href: https://home-server.tailee5654.ts.net:2283
+        description: Fotos y videos self-hosted
     - Vaultwarden:
         icon: bitwarden.png
         href: https://home-server.tailee5654.ts.net:8222

@@ -9,27 +9,29 @@
     ../../../misc/zfs-services-bootstrap
     # Phase 7a — sanoid local snapshot policy (3 tiers: critical/standard/media)
     ../../../misc/sanoid-homelab
-    # Núcleo mínimo (tailscale-only): vault + uptime + dashboard + archivos + postgres
+    # Núcleo mínimo (tailscale-only): vault + uptime + dashboard + archivos
     ../../../services/vaultwarden
     ../../../services/uptime-kuma
     ../../../services/homepage
     ../../../services/samba
-    ../../../services/postgres-shared
     ../../../../users/mauri
     ./hardware.nix
     ./disko.nix
   ];
 
-  # Auto-create datasets si faltan (DR + dev re-deploy). Solo postgres-shared:
-  # backend de Immich (a desplegar). El resto de datasets de servicios eliminados
-  # quedan en el pool sin montar (data preservada, recuperable si se reactivan).
+  # Auto-create datasets si faltan (DR + dev re-deploy).
+  # - postgres-shared: datadir de PostgreSQL (lo gestiona el módulo services.immich).
+  # - tank/photos: librería de fotos de Immich en HDD (928 GB libres).
+  # Datasets de servicios eliminados quedan en el pool sin montar (data preservada).
   services.zfs-services-bootstrap = {
     enable = true;
     datasets = {
       "rpool/services/postgres-shared" = { recordsize = "8K"; };
+      "tank/photos"                    = { recordsize = "1M"; };
     };
     beforeMounts = [
       "var-lib-postgresql.mount"
+      "srv-photos.mount"
     ];
   };
 
@@ -46,6 +48,20 @@
 
   services.homepage-homelab.enable = true;
 
+  # ── Immich — fotos. Auto-gestiona su PostgreSQL (extensión VectorChord) + redis.
+  # ML off (sin GPU, ahorra RAM). Auth propia de Immich. Media en tank (HDD).
+  services.immich = {
+    enable = true;
+    host = "127.0.0.1";
+    port = 2283;
+    openFirewall = false;             # acceso solo por tailscale-serve
+    mediaLocation = "/srv/photos";
+    machine-learning.enable = false;
+    settings.server.externalDomain = "https://home-server.tailee5654.ts.net:2283";
+  };
+  # mediaLocation debe existir y ser de immich antes de arrancar el servicio.
+  systemd.tmpfiles.rules = [ "d /srv/photos 0750 immich immich - -" ];
+
   # Acceso HTTPS dentro del tailnet (Tailscale ya autentica → sin oauth2-proxy).
   services.tailscale-serve-homelab = {
     enable = true;
@@ -54,6 +70,7 @@
       homepage     = { Proxy = "http://127.0.0.1:3000"; };
       uptime       = { Proxy = "http://127.0.0.1:3001"; Port = 8443; };
       vaultwarden  = { Proxy = "http://127.0.0.1:8222"; Port = 8222; };
+      photos       = { Proxy = "http://127.0.0.1:2283"; Port = 2283; };
     };
   };
 
@@ -63,20 +80,6 @@
     sharePath = "/srv/storage/shares";
     lanInterface = "enp2s0";
   };
-
-  # Postgres compartido — backend de Immich (a desplegar). DBs de servicios
-  # eliminados (paperless/grafana/keycloak/nextcloud/hass) removidas.
-  services.postgres-shared-homelab = {
-    enable = true;
-    databases = {
-      immich = {
-        user = "immich";
-        secretFile = config.age.secrets.postgresImmichPass.path;
-      };
-    };
-  };
-
-  age.secrets.postgresImmichPass.file = "${inputs.secrets}/secrets/postgres-immich-pass.age";
 
   networking = {
     hostName = "home-server";
@@ -103,8 +106,11 @@
     device = "rpool/services/postgres-shared";
     fsType = "zfs";
   };
-  # tank/backups y /srv/backups ya declarados en disko.nix Fase A; postgres-shared
-  # escribe a /srv/backups/postgresql (subdir creado via tmpfiles).
+  fileSystems."/srv/photos" = {
+    device = "tank/photos";
+    fsType = "zfs";
+  };
+  # tank/backups y /srv/backups ya declarados en disko.nix Fase A.
 
   systemd.network = {
     enable = true;
