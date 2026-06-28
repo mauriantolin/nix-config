@@ -25,6 +25,9 @@
     gnumake
     python3
     binutils
+    # Toolchain per-proyecto (versiones por repo, aisladas): uv = Python; direnv
+    # auto-activa el entorno al cd en cada worktree; corepack (viene con node) = pnpm.
+    uv
   ];
 
   programs.git = {
@@ -57,6 +60,12 @@
     enable = true;
     keyMode = "vi";
     terminal = "screen-256color";
+  };
+
+  # direnv: auto-activa el entorno por repo (`use flake` / layout uv) al entrar al worktree.
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
   };
 
   programs.htop.enable = true;

@@ -62,6 +62,10 @@
   # mediaLocation debe existir y ser de immich antes de arrancar el servicio.
   systemd.tmpfiles.rules = [ "d /srv/photos 0750 immich immich - -" ];
 
+  # nix-ld: shim del dynamic linker para correr binarios precompilados (Python de uv,
+  # node prebuilt, etc.) en NixOS. Necesario para el toolchain per-proyecto de los repos.
+  programs.nix-ld.enable = true;
+
   # Acceso HTTPS dentro del tailnet (Tailscale ya autentica → sin oauth2-proxy).
   services.tailscale-serve-homelab = {
     enable = true;
