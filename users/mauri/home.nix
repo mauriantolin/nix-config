@@ -34,6 +34,10 @@
     extraConfig = {
       init.defaultBranch = "main";
       pull.rebase = true;
+      # gh como credential helper (equivalente a `gh auth setup-git`, que no puede
+      # correr porque home-manager hace ~/.config/git/config read-only).
+      credential."https://github.com".helper = "!${pkgs.gh}/bin/gh auth git-credential";
+      credential."https://gist.github.com".helper = "!${pkgs.gh}/bin/gh auth git-credential";
     };
   };
 
