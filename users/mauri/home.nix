@@ -16,12 +16,16 @@
     unzip
     dig
     just
+    # Orca agent box — runtime + CLIs de agentes
+    nodejs_22
+    gh
+    claude-code
   ];
 
   programs.git = {
     enable = true;
     userName = "Mauricio Antolin";
-    userEmail = "mmv@akapol.com";
+    userEmail = "otros@mauricioantolin.com";
     extraConfig = {
       init.defaultBranch = "main";
       pull.rebase = true;
