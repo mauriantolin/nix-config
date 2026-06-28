@@ -54,8 +54,9 @@
       cat = "bat --paging=never";
       gs = "git status";
     };
-    # PATs de GitHub para los MCP (descifrados por agenix a /run/agenix, owner mauri).
-    initContent = ''
+    # PATs de GitHub para los MCP. Van en .zshenv (envExtra) para que los vea
+    # CUALQUIER shell (interactivo o no → incluye agentes/MCP). Descifrados por agenix.
+    envExtra = ''
       [ -r /run/agenix/github-pat-mauriantolin ] && export GITHUB_PAT_MAURIANTOLIN="$(cat /run/agenix/github-pat-mauriantolin)"
       [ -r /run/agenix/github-pat-casallab ]     && export GITHUB_PAT_CASALLAB="$(cat /run/agenix/github-pat-casallab)"
       [ -r /run/agenix/github-pat-tpcai ]        && export GITHUB_PAT_TPCAI="$(cat /run/agenix/github-pat-tpcai)"
