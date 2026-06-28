@@ -24,12 +24,6 @@ in
       owner = "root";
       group = "root";
     };
-    hello-secret = {
-      file = "${secretsRoot}/hello-secret.age";
-      mode = "0444";
-      owner = "root";
-      group = "root";
-    };
 
     # R0 — Vaultwarden auto-sync helper credentials.
     # Mode 0400 root: solo el helper rotate.sh los lee via sudo. No los consume
