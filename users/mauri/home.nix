@@ -19,7 +19,8 @@
     # Orca agent box — runtime + CLIs de agentes
     nodejs_22
     gh
-    claude-code
+    # claude-code: NO por nix (nixpkgs laguea). Va por el instalador oficial
+    # (self-updating) en ~/.local/bin. Ver home.sessionPath + zsh envExtra abajo.
     # Toolchain para que el relay SSH de Orca compile node-pty/@parcel/watcher
     gcc
     gnumake
@@ -29,6 +30,9 @@
     # auto-activa el entorno al cd en cada worktree; corepack (viene con node) = pnpm.
     uv
   ];
+
+  # Claude Code via instalador oficial (self-updating) en ~/.local/bin → gana en PATH.
+  home.sessionPath = [ "$HOME/.local/bin" ];
 
   programs.git = {
     enable = true;
