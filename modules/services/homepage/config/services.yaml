@@ -21,3 +21,58 @@
           type: uptimekuma
           url: http://127.0.0.1:3001
           slug: homelab
+
+# Cloud: data de la cuenta AWS PERSONAL (413238766843) vía customapi, leyendo el
+# JSON del exporter (services.cloud-dashboard) servido en loopback :8765.
+# Cloudflare (dominio/DNS) va acá también cuando haya token read-only.
+- Cloud:
+    - Sitio web · mauricioantolin.com:
+        icon: mdi-web
+        href: https://mauricioantolin.com
+        description: CloudFront (cuenta personal)
+        widget:
+          type: customapi
+          url: http://127.0.0.1:8765/aws.json
+          refreshInterval: 600000
+          mappings:
+            - field:
+                site: status
+              label: Estado
+            - field:
+                site: aliases
+              label: Dominios
+            - field:
+                site: distributions
+              label: Distros
+              format: number
+    - AWS personal · Costo:
+        icon: mdi-aws
+        href: https://413238766843.signin.aws.amazon.com/console
+        description: Cuenta 413238766843 (MTD)
+        widget:
+          type: customapi
+          url: http://127.0.0.1:8765/aws.json
+          refreshInterval: 600000
+          mappings:
+            - field:
+                aws:
+                  personal: mtd
+              label: MTD
+              format: number
+              prefix: "$"
+            - field: updated
+              label: Actualizado
+    - AWS factory-prod · Costo:
+        icon: mdi-aws
+        description: Cuenta 035268396878 (MTD)
+        widget:
+          type: customapi
+          url: http://127.0.0.1:8765/aws.json
+          refreshInterval: 600000
+          mappings:
+            - field:
+                aws:
+                  factory: mtd
+              label: MTD
+              format: number
+              prefix: "$"

@@ -7,6 +7,9 @@ layout:
   Apps:
     style: row
     columns: 3
+  Cloud:
+    style: row
+    columns: 3
   Containers:
     style: row
     columns: 3

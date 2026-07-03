@@ -13,6 +13,7 @@
     ../../../services/vaultwarden
     ../../../services/uptime-kuma
     ../../../services/homepage
+    ../../../services/cloud-dashboard
     ../../../services/samba
     ../../../../users/mauri
     ./hardware.nix
@@ -47,6 +48,11 @@
   services.uptime-kuma-homelab.enable = true;
 
   services.homepage-homelab.enable = true;
+
+  # Exporter de datos de AWS (cuenta personal + factory-prod) para el dashboard.
+  # Corre el aws CLI (~/.aws de mauri) cada 6h y sirve un JSON en loopback que
+  # Homepage lee por customapi. Cost Explorer cobra por request → cadencia larga.
+  services.cloud-dashboard.enable = true;
 
   # ── Immich — fotos. Auto-gestiona su PostgreSQL (extensión VectorChord) + redis.
   # ML off (sin GPU, ahorra RAM). Auth propia de Immich. Media en tank (HDD).
