@@ -1,2 +1,7 @@
-# Intencionalmente vacío. Futuro: homepage puede introspectar docker/podman
-# containers; por ahora listamos servicios a mano para simplicidad.
+# Podman expone un socket docker-API-compatible. El default.nix lo bind-montea
+# en /var/run/docker.sock; el container corre como root (PUID=0) para poder
+# hacer connect() sobre él. Con esto Homepage muestra estado + CPU/RAM en vivo de
+# cada contenedor, y AUTO-DESCUBRE los que tengan labels `homepage.*` (ver el
+# bloque `labels` del container homepage como ejemplo).
+podman:
+  socket: /var/run/docker.sock

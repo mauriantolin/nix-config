@@ -4,15 +4,9 @@ color: slate
 headerStyle: clean
 hideVersion: true
 layout:
-  Auth:
+  Apps:
     style: row
-    columns: 2
-  Productivity:
+    columns: 3
+  Containers:
     style: row
-    columns: 2
-  Media:
-    style: row
-    columns: 4
-  Observability:
-    style: row
-    columns: 4
+    columns: 3

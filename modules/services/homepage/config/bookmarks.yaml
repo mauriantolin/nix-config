@@ -1,17 +1,10 @@
+# Keycloak (auth.mauricioantolin.com) y el túnel Cloudflare fueron eliminados en
+# la depuración de 2026-06 → bookmarks removidos.
 - Repos:
     - Nix Config:
         - abbr: NC
           href: https://github.com/mauriantolin/nix-config
-
-- Cloud admin:
-    - Cloudflare:
-        - abbr: CF
-          href: https://dash.cloudflare.com
+- Admin:
     - Tailscale:
         - abbr: TS
           href: https://login.tailscale.com/admin
-
-- SSO admin:
-    - KC realm homelab:
-        - abbr: KC
-          href: https://auth.mauricioantolin.com/admin/master/console/#/homelab

@@ -4,6 +4,24 @@
       timeStyle: short
       dateStyle: long
       hourCycle: h23
+
+# Recursos del host. El container corre --network=host, así que /proc refleja
+# el host: cpu/memory/uptime son reales. Los discos se miden por statvfs de un
+# path montado dentro del container:
+#   /app/config  → dataset en rpool (SSD)
+#   /mnt/tank    → bind-mount ro de /srv/storage (tank, HDD) — ver default.nix
+- resources:
+    label: home-server
+    cpu: true
+    memory: true
+    uptime: true
+- resources:
+    label: SSD rpool
+    disk: /app/config
+- resources:
+    label: HDD tank
+    disk: /mnt/tank
+
 - search:
     provider: duckduckgo
     target: _blank

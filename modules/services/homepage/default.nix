@@ -25,40 +25,6 @@ in
       type = lib.types.str;
       default = "home-server.tailee5654.ts.net,localhost,127.0.0.1";
     };
-
-    # Widget secrets bootstrap: oneshot que extrae API keys de cada servicio
-    # (config files o vía API con admin pass) y las escribe en un EnvironmentFile
-    # mode 0400 root:root que podman le inyecta como vars HOMEPAGE_VAR_*.
-    # Los .yaml en /var/lib/homepage/config (mode 644) referencian las vars con
-    # `{{HOMEPAGE_VAR_X}}` — los secrets nunca tocan disco persistente plaintext.
-    secretsBootstrap = {
-      enable = lib.mkEnableOption "Auto-extract widget secrets to EnvironmentFile";
-      paperlessAdminPassPath = lib.mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        description = "Path al .age con admin pass de Paperless (para POST /api/token/).";
-      };
-      grafanaAdminPassPath = lib.mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        description = "Path al .age con admin pass de Grafana (basic auth en widget).";
-      };
-      delugeWebPassPath = lib.mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        description = "Path al .age con web UI password de Deluge.";
-      };
-      jellyfinApiKeyPath = lib.mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        description = "Path al .age con API key de Jellyfin (Dashboard → API Keys).";
-      };
-      jellyseerrApiKeyPath = lib.mkOption {
-        type = lib.types.nullOr lib.types.path;
-        default = null;
-        description = "Path al .age con API key de Jellyseerr (Settings → General → API Key).";
-      };
-    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -78,20 +44,38 @@ in
       ports = [ ];
       environment = {
         HOMEPAGE_ALLOWED_HOSTS = cfg.allowedHosts;
-        PUID = "1000";
-        PGID = "1000";
+        # PUID/PGID=0 → node corre como root. Motivos: (1) acceso al socket
+        # rootful de podman sin depender de grupos suplementarios (su-exec del
+        # entrypoint los resetea al dropear a un uid no-root), (2) el entrypoint
+        # saltea el `chown -R /app` (que sobre este CPU tardaba minutos en cada
+        # arranque). Aceptable: container tailnet-only y el socket ya es
+        # root-equivalente para cualquiera que lo monte.
+        PUID = "0";
+        PGID = "0";
         HOSTNAME = "127.0.0.1";
       };
-      # Widget secrets via env file generado por homepage-secrets-bootstrap.
-      # Podman lee el archivo a startup; el container nunca lo ve en su filesystem.
-      environmentFiles =
-        lib.optional cfg.secretsBootstrap.enable
-          "/run/homepage-secrets/env";
+      # Auto-discovery de contenedores: Homepage lee estos labels del propio
+      # container (vía el socket de podman) y lo muestra solo en el dashboard.
+      # Patrón replicable: cualquier oci-container futuro que ponga labels
+      # `homepage.*` aparece automáticamente sin tocar services.yaml.
+      labels = {
+        "homepage.group"       = "Containers";
+        "homepage.name"        = "Homepage";
+        "homepage.icon"        = "homepage.png";
+        "homepage.href"        = "https://home-server.tailee5654.ts.net";
+        "homepage.description" = "Este dashboard";
+      };
       volumes = [
         # /var/lib/homepage/config es un directorio escribible; los archivos se
         # copian allí en cada activación por el servicio homepage-config-sync.
         "/var/lib/homepage/config:/app/config"
         "/var/lib/homepage/icons:/app/public/icons"
+        # Socket de podman (docker-API compatible) → widget de contenedores.
+        # NO montar :ro — connect() a un unix socket requiere permiso de
+        # escritura y un bind-mount read-only lo bloquea con EACCES.
+        "/run/podman/podman.sock:/var/run/docker.sock"
+        # Dataset de tank (HDD) para el widget de disco (statvfs de /mnt/tank).
+        "/srv/storage:/mnt/tank:ro"
       ];
       extraOptions = [ "--pull=missing" "--network=host" ];
     };
@@ -140,125 +124,5 @@ in
     networking.firewall.extraStopCommands = ''
       iptables -D nixos-fw '!' -i lo -p tcp --dport ${toString cfg.port} -j DROP 2>/dev/null || true
     '';
-
-    # ── Phase 8 — Widget secrets bootstrap ───────────────────────────────────
-    # Extrae API keys/passes de servicios on-host y los expone como
-    # HOMEPAGE_VAR_* en /run/homepage-secrets/env (root:root 0400).
-    # Idempotente: comparemos hash → si cambió, restart container.
-    systemd.services.homepage-secrets-bootstrap =
-      lib.mkIf cfg.secretsBootstrap.enable {
-        description = "Extract API keys + admin passes for Homepage widget env";
-        wantedBy = [ "podman-homepage.service" ];
-        before    = [ "podman-homepage.service" ];
-        # Esperá a que cada servicio fuente esté arriba; si alguno no existe en
-        # el sistema systemd lo ignora silenciosamente (no fail).
-        after = [
-          "sonarr.service"
-          "radarr.service"
-          "prowlarr.service"
-          "bazarr.service"
-          "deluge.service"
-          "paperless-web.service"
-          "grafana.service"
-        ];
-        path = with pkgs; [ curl jq coreutils gnugrep gawk libxml2 diffutils ];
-        serviceConfig = {
-          Type = "oneshot";
-          RemainAfterExit = true;
-          LoadCredential =
-            (lib.optional (cfg.secretsBootstrap.paperlessAdminPassPath != null)
-              "paperless-pass:${toString cfg.secretsBootstrap.paperlessAdminPassPath}")
-            ++ (lib.optional (cfg.secretsBootstrap.grafanaAdminPassPath != null)
-              "grafana-pass:${toString cfg.secretsBootstrap.grafanaAdminPassPath}")
-            ++ (lib.optional (cfg.secretsBootstrap.jellyfinApiKeyPath != null)
-              "jellyfin-key:${toString cfg.secretsBootstrap.jellyfinApiKeyPath}")
-            ++ (lib.optional (cfg.secretsBootstrap.jellyseerrApiKeyPath != null)
-              "jellyseerr-key:${toString cfg.secretsBootstrap.jellyseerrApiKeyPath}")
-            ++ (lib.optional (cfg.secretsBootstrap.delugeWebPassPath != null)
-              "deluge-pass:${toString cfg.secretsBootstrap.delugeWebPassPath}");
-        };
-        script = ''
-          set -uo pipefail
-          install -d -m 0700 /run/homepage-secrets
-
-          extract_xml_apikey() {
-            local f="$1"
-            [ -r "$f" ] || return 0
-            xmllint --xpath 'string(//ApiKey)' "$f" 2>/dev/null || true
-          }
-          extract_bazarr_apikey() {
-            local f="$1"
-            [ -r "$f" ] || return 0
-            awk '/^auth:/{flag=1; next} /^[a-z]/{flag=0} flag && /apikey:/{print $2; exit}' "$f" 2>/dev/null || true
-          }
-
-          SONARR=$(extract_xml_apikey /var/lib/sonarr/config.xml)
-          RADARR=$(extract_xml_apikey /var/lib/radarr/config.xml)
-          # Prowlarr corre con DynamicUser → state en /var/lib/private/prowlarr.
-          PROWLARR=$(extract_xml_apikey /var/lib/private/prowlarr/config.xml)
-          BAZARR=$(extract_bazarr_apikey /var/lib/bazarr/config/config.yaml)
-
-          # Paperless: POST /api/token/ con admin/pass (DRF obtain_auth_token,
-          # idempotente — devuelve siempre el mismo token por user). Retry 6×5s
-          # por si el unit acaba de arrancar.
-          PAPERLESS_TOKEN=""
-          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/paperless-pass" ]; then
-            PAPERLESS_PASS=$(cat "$CREDENTIALS_DIRECTORY/paperless-pass")
-            for i in 1 2 3 4 5 6; do
-              PAPERLESS_TOKEN=$(curl -sf -m 5 -X POST -H 'Content-Type: application/json' \
-                -d "{\"username\":\"admin\",\"password\":\"$PAPERLESS_PASS\"}" \
-                http://127.0.0.1:8000/api/token/ 2>/dev/null | jq -r '.token // ""' 2>/dev/null || echo "")
-              [ -n "$PAPERLESS_TOKEN" ] && break
-              sleep 5
-            done
-          fi
-
-          GRAFANA_PASS=""
-          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/grafana-pass" ]; then
-            GRAFANA_PASS=$(cat "$CREDENTIALS_DIRECTORY/grafana-pass")
-          fi
-
-          JELLYFIN_KEY=""
-          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/jellyfin-key" ]; then
-            JELLYFIN_KEY=$(cat "$CREDENTIALS_DIRECTORY/jellyfin-key")
-          fi
-
-          JELLYSEERR_KEY=""
-          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/jellyseerr-key" ]; then
-            JELLYSEERR_KEY=$(cat "$CREDENTIALS_DIRECTORY/jellyseerr-key")
-          fi
-
-          DELUGE_PASS=""
-          if [ -n "''${CREDENTIALS_DIRECTORY:-}" ] && [ -r "$CREDENTIALS_DIRECTORY/deluge-pass" ]; then
-            DELUGE_PASS=$(cat "$CREDENTIALS_DIRECTORY/deluge-pass")
-          fi
-
-          NEW=$(mktemp -p /run/homepage-secrets .env.XXXXXX)
-          chmod 0400 "$NEW"
-          cat > "$NEW" <<EOF
-          HOMEPAGE_VAR_SONARR_KEY=$SONARR
-          HOMEPAGE_VAR_RADARR_KEY=$RADARR
-          HOMEPAGE_VAR_PROWLARR_KEY=$PROWLARR
-          HOMEPAGE_VAR_BAZARR_KEY=$BAZARR
-          HOMEPAGE_VAR_PAPERLESS_TOKEN=$PAPERLESS_TOKEN
-          HOMEPAGE_VAR_GRAFANA_PASS=$GRAFANA_PASS
-          HOMEPAGE_VAR_DELUGE_PASS=$DELUGE_PASS
-          HOMEPAGE_VAR_JELLYFIN_KEY=$JELLYFIN_KEY
-          HOMEPAGE_VAR_JELLYSEERR_KEY=$JELLYSEERR_KEY
-          EOF
-
-          OUT=/run/homepage-secrets/env
-          if [ ! -f "$OUT" ] || ! cmp -s "$NEW" "$OUT"; then
-            mv -f "$NEW" "$OUT"
-            # Restart pickup new env (podman bake env at container creation).
-            # --no-block: bootstrap is `before` podman-homepage; un try-restart
-            # síncrono crearía deadlock (bootstrap espera a podman-homepage que
-            # espera a bootstrap). Con --no-block sólo encolá el restart.
-            systemctl --no-block try-restart podman-homepage.service 2>/dev/null || true
-          else
-            rm -f "$NEW"
-          fi
-        '';
-      };
   };
 }

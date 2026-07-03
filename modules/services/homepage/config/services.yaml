@@ -1,16 +1,22 @@
+# Servicios nativos (systemd): estado up/down por siteMonitor (ping local, sin
+# secrets). Los CONTENEDORES (podman) NO se listan acá: aparecen solos en el
+# grupo "Containers" vía auto-discovery por labels (ver default.nix).
 - Apps:
     - Immich:
         icon: immich.png
         href: https://home-server.tailee5654.ts.net:2283
         description: Fotos y videos self-hosted
+        siteMonitor: http://127.0.0.1:2283/api/server/ping
     - Vaultwarden:
         icon: bitwarden.png
         href: https://home-server.tailee5654.ts.net:8222
         description: Password manager
+        siteMonitor: http://127.0.0.1:8222/alive
     - Uptime Kuma:
         icon: uptime-kuma.png
         href: https://home-server.tailee5654.ts.net:8443
         description: Uptime status checks
+        siteMonitor: http://127.0.0.1:3001
         widget:
           type: uptimekuma
           url: http://127.0.0.1:3001
